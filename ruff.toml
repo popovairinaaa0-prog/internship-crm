@@ -1,0 +1,21 @@
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "DJ",     # flake8-django
+    "RUF",    # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (formatter handles it)
+]
+
+[lint.per-file-ignores]
+"*/migrations/*.py" = ["E", "F", "I"]
+"*/tests/*.py" = ["B"]
