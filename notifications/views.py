@@ -1,9 +1,10 @@
-"""Views для рассылок."""
+"""Views для рассылок и дашборда."""
 
 from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.cache import cache
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -11,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 
 from students.models import Student
 
+from .dashboard import build_dashboard_data
 from .models import BroadcastJob, BroadcastStatus, DeliveryStatus
 from .services import (
     collect_delivery_stats,
@@ -18,6 +20,34 @@ from .services import (
     enqueue_broadcast,
     render_message,
 )
+
+
+DASHBOARD_CACHE_KEY = "dashboard_data"
+DASHBOARD_CACHE_TTL = 60  # секунд
+
+
+def get_dashboard_data() -> dict:
+    """Берёт данные дашборда из кеша или строит заново."""
+    return cache.get_or_set(DASHBOARD_CACHE_KEY, build_dashboard_data, DASHBOARD_CACHE_TTL)
+
+
+def healthz(request):
+    """Health-check эндпоинт. Возвращает 200 если БД доступна, 503 иначе."""
+    from django.db import connection
+
+    db_ok = True
+    error = None
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except Exception as exc:  # noqa: BLE001
+        db_ok = False
+        error = str(exc)
+
+    return JsonResponse(
+        {"ok": db_ok, "db": "ok" if db_ok else "error", "error": error},
+        status=200 if db_ok else 503,
+    )
 
 
 def _parse_ids(raw: str) -> list[int]:

@@ -1,0 +1,188 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block content %}
+{% if dashboard %}
+<style>
+    .dash-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .dash-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 14px 16px;
+    }
+    .dash-card .v { font-size: 28px; font-weight: 700; color: #1f2937; }
+    .dash-card .l { font-size: 12px; color: #6b7280; text-transform: uppercase; margin-top: 4px; letter-spacing: 0.4px; }
+    .dash-card .sub { font-size: 12px; color: #4b5563; margin-top: 6px; }
+
+    .dash-alerts {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+    }
+    .dash-alerts h3 {
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        color: #991b1b;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .dash-alert {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-top: 1px solid #fee2e2;
+    }
+    .dash-alert:first-of-type { border-top: 0; }
+    .dash-alert--critical .t { color: #991b1b; font-weight: 600; }
+    .dash-alert--warning .t { color: #92400e; font-weight: 600; }
+    .dash-alert .s { font-size: 12px; color: #6b7280; }
+    .dash-alert a { font-weight: 600; text-decoration: none; }
+
+    .dash-cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    .dash-col {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 14px 16px;
+    }
+    .dash-col h3 {
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        color: #1f2937;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .dash-count-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+    }
+    .dash-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    .dot-purple    { background: #c084fc; }
+    .dot-amber     { background: #fbbf24; }
+    .dot-teal      { background: #2dd4bf; }
+    .dot-green     { background: #4ade80; }
+    .dot-gray      { background: #9ca3af; }
+    .dot-gray-light{ background: #d1d5db; }
+    .dot-red       { background: #f87171; }
+
+    .dash-events {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-bottom: 20px;
+    }
+    .dash-event {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 13px;
+        border-top: 1px solid #f3f4f6;
+    }
+    .dash-event:first-of-type { border-top: 0; }
+    .dash-event .when { color: #6b7280; font-size: 12px; min-width: 110px; text-align: right; }
+</style>
+
+<!-- Метрики -->
+<div class="dash-grid">
+    <div class="dash-card">
+        <div class="v">{{ dashboard.metrics.students_total }}</div>
+        <div class="l">Студентов</div>
+        <div class="sub">{{ dashboard.metrics.students_waiting }} ждут стажировку</div>
+    </div>
+    <div class="dash-card">
+        <div class="v">{{ dashboard.metrics.companies_total }}</div>
+        <div class="l">Компаний</div>
+        <div class="sub">{{ dashboard.metrics.companies_open }} принимают</div>
+    </div>
+    <div class="dash-card">
+        <div class="v">{{ dashboard.metrics.placements_in_progress }}</div>
+        <div class="l">На стажировке</div>
+        <div class="sub">в {{ dashboard.metrics.companies_with_progress }} компаниях</div>
+    </div>
+    <div class="dash-card">
+        <div class="v">{{ dashboard.metrics.placements_sent }}</div>
+        <div class="l">Передано</div>
+        <div class="sub">ждут ответа</div>
+    </div>
+</div>
+
+<!-- Алерты -->
+{% if dashboard.alerts %}
+<div class="dash-alerts">
+    <h3>Требует внимания</h3>
+    {% for alert in dashboard.alerts %}
+    <div class="dash-alert dash-alert--{{ alert.level }}">
+        <div>
+            <div class="t">{{ alert.title }}</div>
+            <div class="s">{{ alert.subtitle }}</div>
+        </div>
+        <a href="{{ alert.url }}">→</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Сводки -->
+<div class="dash-cols">
+    <div class="dash-col">
+        <h3>Студенты по статусам</h3>
+        {% for row in dashboard.student_counts %}
+        <div class="dash-count-row">
+            <span><span class="dash-dot dot-{{ row.color }}"></span>{{ row.label }}</span>
+            <span>{{ row.count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="dash-col">
+        <h3>Компании по статусам</h3>
+        {% for row in dashboard.company_counts %}
+        <div class="dash-count-row" {% if row.highlight %}style="color: #991b1b; font-weight: 600;"{% endif %}>
+            <span><span class="dash-dot dot-{{ row.color }}"></span>{{ row.label }}</span>
+            <span>{{ row.count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Последние события -->
+{% if dashboard.recent_events %}
+<div class="dash-events">
+    <h3 style="margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px; color: #1f2937;">
+        Последние события
+    </h3>
+    {% for ev in dashboard.recent_events %}
+    <div class="dash-event">
+        <span>{{ ev.text }}</span>
+        <span class="when">{{ ev.when|date:"d.m H:i" }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}
+
+{{ block.super }}
+{% endblock %}

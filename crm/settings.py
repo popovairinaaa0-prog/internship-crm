@@ -138,3 +138,50 @@ PLACEMENT_STALE_HIGHLIGHT_DAYS = 7
 PLACEMENT_STALE_CRITICAL_DAYS = 14
 COMPANY_PAUSE_ALERT_DAYS = 30
 PUSH_RULES_TICK_INTERVAL_MINUTES = 60
+
+
+# Логирование — пишем в stdout, агрегацию отдаём docker logs / journald.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "{asctime} {levelname} {name} — {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["stdout"],
+            "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["stdout"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django_q": {
+            "handlers": ["stdout"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Приложения проекта
+        "accounts": {"handlers": ["stdout"], "level": "INFO", "propagate": False},
+        "students": {"handlers": ["stdout"], "level": "INFO", "propagate": False},
+        "companies": {"handlers": ["stdout"], "level": "INFO", "propagate": False},
+        "placements": {"handlers": ["stdout"], "level": "INFO", "propagate": False},
+        "notifications": {"handlers": ["stdout"], "level": "INFO", "propagate": False},
+        "bot": {"handlers": ["stdout"], "level": "INFO", "propagate": False},
+    },
+    "root": {
+        "handlers": ["stdout"],
+        "level": "WARNING",
+    },
+}

@@ -1,0 +1,102 @@
+# Prod-композиция. Без SSL — заглушка, добавите когда будет домен и
+# боевой сертификат (см. DEPLOY.md).
+#
+# Запуск:  docker compose -f docker-compose.prod.yml up -d
+# Логи:    docker compose -f docker-compose.prod.yml logs -f web qcluster bot
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm-postgres-prod
+    restart: always
+    env_file: .env.prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm}
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crm} -d ${POSTGRES_DB:-crm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    container_name: crm-web-prod
+    restart: always
+    command: gunicorn crm.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-crm}@postgres:5432/${POSTGRES_DB:-crm}
+      DEBUG: "False"
+    volumes:
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  qcluster:
+    build: .
+    container_name: crm-qcluster-prod
+    restart: always
+    command: python manage.py qcluster
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-crm}@postgres:5432/${POSTGRES_DB:-crm}
+      DEBUG: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bot:
+    build: .
+    container_name: crm-bot-prod
+    restart: always
+    command: python -m bot.main
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-crm}@postgres:5432/${POSTGRES_DB:-crm}
+      CRM_API_BASE_URL: http://web:8000
+      DEBUG: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: crm-nginx-prod
+    restart: always
+    ports:
+      - "80:80"
+      # - "443:443"   # включить когда добавите SSL
+    volumes:
+      - ./nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_files:/var/www/static:ro
+      - media_files:/var/www/media:ro
+    depends_on:
+      - web
+
+  backup:
+    image: postgres:16-alpine
+    container_name: crm-backup
+    restart: always
+    env_file: .env.prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm}
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+    volumes:
+      - ./scripts:/scripts:ro
+      - backups_data:/backups
+    entrypoint: /scripts/backup_cron.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data_prod:
+  static_files:
+  media_files:
+  backups_data:
