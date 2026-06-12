@@ -28,6 +28,30 @@
     --c-purple-800: #6b21a8;
 }
 
+/* --- Круглый аватар с инициалами ------------------------------------- */
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+}
+
+/* --- Подсветка строк по сроку контакта ------------------------------- */
+.row-overdue { box-shadow: inset 4px 0 0 #ef4444; }
+.row-overdue td { background: rgba(239, 68, 68, 0.06) !important; }
+
+.row-today { box-shadow: inset 4px 0 0 #f59e0b; }
+.row-today td { background: rgba(245, 158, 11, 0.06) !important; }
+
+.row-soon { box-shadow: inset 4px 0 0 rgba(167, 139, 250, 0.4); }
+
 /* --- Универсальная плашка статуса ------------------------------------ */
 .status-pill {
     display: inline-block;
@@ -53,15 +77,48 @@
     background: transparent;
 }
 
-/* --- Telegram-индикатор --------------------------------------------- */
-.tg-yes { color: var(--c-green-800); font-weight: 600; }
-.tg-no  { color: var(--c-gray-800); opacity: 0.45; }
+/* --- Telegram-индикатор (видим и в светлой, и в тёмной теме) --------- */
+.tg-yes {
+    color: #10b981;            /* emerald-500 — яркий зелёный на обеих темах */
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.tg-yes::before {
+    content: "✈";
+    font-size: 13px;
+}
+.tg-no {
+    color: #94a3b8;            /* slate-400 — заметный gray на обеих темах */
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.tg-no.tg-empty {
+    color: #94a3b8;
+    font-style: italic;
+}
 
-/* --- Дата контакта в списке студентов ------------------------------- */
-.contact-date--overdue { color: var(--c-red-800); font-weight: 700; }
-.contact-date--today   { color: var(--c-amber-800); font-weight: 700; }
-.contact-date--soon    { color: var(--c-gray-800); }
-.contact-date--none    { color: var(--c-gray-800); opacity: 0.5; }
+/* --- Дата контакта в списке студентов (видна в обеих темах) ---------- */
+.contact-date--overdue {
+    color: #ef4444;            /* red-500 — яркая на тёмной и насыщенная на светлой */
+    font-weight: 800;
+}
+.contact-date--today {
+    color: #f59e0b;            /* amber-500 */
+    font-weight: 800;
+}
+.contact-date--soon {
+    color: #a78bfa;            /* violet-400 — родная палитра, не сливается с фоном */
+    font-weight: 600;
+}
+.contact-date--none {
+    color: #94a3b8;            /* slate-400 */
+    font-style: italic;
+    font-weight: 600;
+}
 
 /* --- Заголовок секции внутри списка студентов ------------------------ */
 .section-header {

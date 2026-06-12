@@ -6,12 +6,18 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import path, reverse
 
+from unfold.admin import ModelAdmin
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
+
 from .models import ManagerInviteToken, User
 from .services import create_manager_invite_link
 
 
 @admin.register(User)
-class UserAdmin(DjangoUserAdmin):
+class UserAdmin(DjangoUserAdmin, ModelAdmin):
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
     fieldsets = DjangoUserAdmin.fieldsets + (
         ("Telegram", {"fields": ("telegram_chat_id",)}),
     )
@@ -54,4 +60,7 @@ class UserAdmin(DjangoUserAdmin):
         )
 
 
-admin.site.register(ManagerInviteToken)
+@admin.register(ManagerInviteToken)
+class ManagerInviteTokenAdmin(ModelAdmin):
+    list_display = ("token", "user", "created_at", "used_at", "expires_at")
+    readonly_fields = ("token", "created_at", "used_at")

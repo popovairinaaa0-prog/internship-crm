@@ -5,13 +5,20 @@ from __future__ import annotations
 from urllib.parse import urlencode
 
 from django.contrib import admin, messages
-from django.contrib.contenttypes.admin import GenericTabularInline
 from django.db.models import Count, F, ProtectedError
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+
+from django.contrib.contenttypes.admin import GenericTabularInline as DjangoGenericTabularInline
+
+from unfold.admin import ModelAdmin, TabularInline
+
+
+class GenericTabularInline(DjangoGenericTabularInline, TabularInline):
+    pass
 
 from accounts.admin_mixins import VipReadonlyMixin
 from notifications.models import Comment, ManualContact
@@ -51,10 +58,51 @@ class ContactDueFilter(admin.SimpleListFilter):
                 return queryset
 
 
+class SentToCompanyFilter(admin.SimpleListFilter):
+    """Студенты, которых хотя бы раз направляли в выбранную компанию."""
+    title = "Направлен в компанию"
+    parameter_name = "sent_to_company"
+
+    def lookups(self, request, model_admin):
+        from companies.models import Company
+        return [(str(c.pk), c.name) for c in Company.objects.order_by("name")]
+
+    def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
+        try:
+            company_id = int(self.value())
+        except ValueError:
+            return queryset
+        return queryset.filter(placements__company_id=company_id).distinct()
+
+
+class NotSentToCompanyFilter(admin.SimpleListFilter):
+    """Студенты, которых ни разу не направляли в выбранную компанию.
+
+    Удобно для подбора: выбираешь компанию → видишь, кого ещё можно туда отправить.
+    """
+    title = "НЕ направлен в компанию"
+    parameter_name = "not_sent_to_company"
+
+    def lookups(self, request, model_admin):
+        from companies.models import Company
+        return [(str(c.pk), c.name) for c in Company.objects.order_by("name")]
+
+    def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
+        try:
+            company_id = int(self.value())
+        except ValueError:
+            return queryset
+        return queryset.exclude(placements__company_id=company_id)
+
+
 # --- Inlines ------------------------------------------------------------
 
 
-class PlacementForStudentInline(admin.TabularInline):
+class PlacementForStudentInline(TabularInline):
     model = Placement
     fk_name = "student"
     extra = 0
@@ -75,7 +123,7 @@ class CommentInline(GenericTabularInline):
     verbose_name_plural = "Комментарии"
 
 
-class ManualContactInline(admin.TabularInline):
+class ManualContactInline(TabularInline):
     model = ManualContact
     fk_name = "student"
     extra = 0
@@ -111,15 +159,25 @@ def _student_status_pill(status: str) -> str:
 
 
 @admin.register(Student)
-class StudentAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class StudentAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = (
+        "avatar_column",
         "full_name",
         "telegram_indicator",
         "directions_list",
-        "status_pill",
+        "status",
+        "current_placement_column",
         "next_contact_display",
     )
-    list_filter = ("status", "directions", ContactDueFilter)
+    list_display_links = ("full_name",)
+    list_editable = ("status",)
+    list_filter = (
+        "status",
+        "directions",
+        ContactDueFilter,
+        SentToCompanyFilter,
+        NotSentToCompanyFilter,
+    )
     search_fields = ("full_name", "telegram_username", "email", "phone")
     list_per_page = 20
     list_select_related = False
@@ -130,11 +188,19 @@ class StudentAdmin(VipReadonlyMixin, admin.ModelAdmin):
 
     class Media:
         css = {"all": ("admin/css/admin_custom.css",)}
+        js = ("admin/js/admin_custom.js",)
 
     # --- queryset с сортировкой по дате контакта NULLS LAST ---------------
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request).prefetch_related("directions")
+        qs = (
+            super()
+            .get_queryset(request)
+            .prefetch_related(
+                "directions",
+                "placements__company",
+            )
+        )
         # По умолчанию: сначала самые срочные контакты, пустые — в конец
         if not request.GET.get("o"):
             qs = qs.order_by(F("next_contact_at").asc(nulls_last=True), "full_name")
@@ -142,16 +208,47 @@ class StudentAdmin(VipReadonlyMixin, admin.ModelAdmin):
 
     # --- колонки списка --------------------------------------------------
 
+    _AVATAR_PALETTE = (
+        "#a78bfa",  # violet-400
+        "#c084fc",  # purple-400
+        "#f472b6",  # pink-400
+        "#fb7185",  # rose-400
+        "#fbbf24",  # amber-400
+        "#34d399",  # emerald-400
+        "#22d3ee",  # cyan-400
+        "#60a5fa",  # blue-400
+    )
+
+    @classmethod
+    def _avatar_initials(cls, name: str) -> str:
+        parts = (name or "").split()[:2]
+        if not parts:
+            return "?"
+        return "".join(p[0].upper() for p in parts if p)
+
+    @classmethod
+    def _avatar_color(cls, name: str) -> str:
+        h = sum(ord(c) for c in (name or "")) if name else 0
+        return cls._AVATAR_PALETTE[h % len(cls._AVATAR_PALETTE)]
+
+    @admin.display(description="")
+    def avatar_column(self, obj: Student):
+        return format_html(
+            '<span class="avatar" style="background:{}">{}</span>',
+            self._avatar_color(obj.full_name),
+            self._avatar_initials(obj.full_name),
+        )
+
     @admin.display(description="Telegram")
     def telegram_indicator(self, obj: Student):
         if obj.telegram_chat_id:
             return format_html(
-                '<span class="tg-yes">✓ @{}</span>',
-                obj.telegram_username or "—",
+                '<span class="tg-yes">@{}</span>',
+                obj.telegram_username or "подписан",
             )
         if obj.telegram_username:
             return format_html('<span class="tg-no">@{}</span>', obj.telegram_username)
-        return mark_safe('<span class="tg-no">—</span>')
+        return mark_safe('<span class="tg-no tg-empty">— нет —</span>')
 
     @admin.display(description="Направления")
     def directions_list(self, obj: Student):
@@ -161,6 +258,43 @@ class StudentAdmin(VipReadonlyMixin, admin.ModelAdmin):
     @admin.display(description="Статус")
     def status_pill(self, obj: Student):
         return _student_status_pill(obj.status)
+
+    @admin.display(description="Куда направлен / стажируется")
+    def current_placement_column(self, obj: Student):
+        """Активные/последние Placement: компания + статус-плашка.
+
+        Приоритет: IN_PROGRESS → SENT_TO_COMPANY → последний по дате.
+        Если несколько — показываем первый «(+N)».
+        """
+        from placements.models import PlacementStatus
+
+        # Загружено через prefetch_related — не делаем доп. запросов
+        all_placements = list(obj.placements.all())
+        in_progress = [p for p in all_placements if p.status == PlacementStatus.IN_PROGRESS]
+        sent = [p for p in all_placements if p.status == PlacementStatus.SENT_TO_COMPANY]
+
+        primary = None
+        if in_progress:
+            primary = sorted(in_progress, key=lambda p: p.created_at, reverse=True)[0]
+            label_color = "#2dd4bf"  # teal-400 — стажируется
+            label_text = "стажируется"
+        elif sent:
+            primary = sorted(sent, key=lambda p: p.created_at, reverse=True)[0]
+            label_color = "#60a5fa"  # blue-400 — резюме у компании
+            label_text = "передан"
+        else:
+            return mark_safe('<span class="tg-no tg-empty">— нет —</span>')
+
+        others_count = len(in_progress) + len(sent) - 1
+        suffix = format_html(' <span style="color:#94a3b8">+{}</span>', others_count) if others_count > 0 else ""
+        return format_html(
+            '<div><strong>{}</strong> {}</div>'
+            '<div style="font-size:11px;color:{};font-weight:600;text-transform:uppercase;letter-spacing:.3px">{}</div>',
+            primary.company.name,
+            suffix,
+            label_color,
+            label_text,
+        )
 
     @admin.display(description="Контакт", ordering="next_contact_at")
     def next_contact_display(self, obj: Student):
@@ -268,7 +402,7 @@ def show_directions(modeladmin, request, queryset):
 
 
 @admin.register(Direction)
-class DirectionAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class DirectionAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = ("name", "slug", "is_active", "students_count", "companies_count")
     list_editable = ("is_active",)
     list_filter = ("is_active",)
@@ -320,4 +454,7 @@ class DirectionAdmin(VipReadonlyMixin, admin.ModelAdmin):
             )
 
 
-admin.site.register(TelegramInviteToken)
+@admin.register(TelegramInviteToken)
+class TelegramInviteTokenAdmin(ModelAdmin):
+    list_display = ("token", "student", "created_at", "used_at", "expires_at")
+    readonly_fields = ("token", "created_at", "used_at")

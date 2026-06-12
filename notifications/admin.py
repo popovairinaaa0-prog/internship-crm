@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from django.contrib import admin
 
+from unfold.admin import ModelAdmin
+
 from accounts.admin_mixins import VipReadonlyMixin, is_vip
 
 from .models import (
@@ -20,7 +22,7 @@ from .models import (
 
 
 @admin.register(MessageTemplate)
-class MessageTemplateAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class MessageTemplateAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = ("name", "code", "audience", "is_active", "updated_at")
     list_filter = ("audience", "is_active")
     search_fields = ("name", "code", "text")
@@ -32,7 +34,7 @@ class MessageTemplateAdmin(VipReadonlyMixin, admin.ModelAdmin):
 
 
 @admin.register(PushRule)
-class PushRuleAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class PushRuleAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = (
         "name",
         "audience_display",
@@ -83,7 +85,7 @@ class PushRuleAdmin(VipReadonlyMixin, admin.ModelAdmin):
 
 
 @admin.register(BroadcastJob)
-class BroadcastJobAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class BroadcastJobAdmin(VipReadonlyMixin, ModelAdmin):
     """Рассылки создаются через свой view (этап 7). Здесь — только просмотр."""
 
     list_display = (
@@ -116,7 +118,7 @@ class BroadcastJobAdmin(VipReadonlyMixin, admin.ModelAdmin):
 
 
 @admin.register(BroadcastDelivery)
-class BroadcastDeliveryAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class BroadcastDeliveryAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = ("job", "student", "status", "sent_at")
     list_filter = ("status",)
     search_fields = ("student__full_name",)
@@ -127,7 +129,7 @@ class BroadcastDeliveryAdmin(VipReadonlyMixin, admin.ModelAdmin):
 
 
 @admin.register(ManualContact)
-class ManualContactAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class ManualContactAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = ("student", "manager", "broadcast_job", "contacted_at")
     list_filter = ("manager",)
     search_fields = ("student__full_name", "note")
@@ -135,7 +137,7 @@ class ManualContactAdmin(VipReadonlyMixin, admin.ModelAdmin):
 
 
 @admin.register(Comment)
-class CommentAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class CommentAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = ("id", "content_type", "object_id", "author", "created_at")
     list_filter = ("content_type",)
     search_fields = ("text",)
@@ -165,7 +167,7 @@ class CommentAdmin(VipReadonlyMixin, admin.ModelAdmin):
 
 
 @admin.register(Attachment)
-class AttachmentAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class AttachmentAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = ("original_name", "content_type", "object_id", "uploaded_by", "created_at")
     list_filter = ("content_type",)
     search_fields = ("original_name",)
@@ -173,7 +175,7 @@ class AttachmentAdmin(VipReadonlyMixin, admin.ModelAdmin):
 
 
 @admin.register(PushSent)
-class PushSentAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class PushSentAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = ("rule", "sent_at", "recipient_chat_id", "response_callback")
     list_filter = ("rule",)
     readonly_fields = (

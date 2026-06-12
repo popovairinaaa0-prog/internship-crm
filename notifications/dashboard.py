@@ -72,14 +72,27 @@ def _build_metrics() -> dict[str, Any]:
         status=PlacementStatus.SENT_TO_COMPANY
     ).count()
 
+    student_list = reverse("admin:students_student_changelist")
+    company_list = reverse("admin:companies_company_changelist")
+    placement_list = reverse("admin:placements_placement_changelist")
+
     return {
         "students_total": students_total,
         "students_waiting": students_waiting,
+        "students_url": student_list,
+        "students_waiting_url": student_list + f"?status__exact={StudentStatus.WAITING}",
+
         "companies_total": companies_total,
         "companies_open": companies_open,
+        "companies_url": company_list,
+        "companies_open_url": company_list + f"?hiring_status__exact={HiringStatus.OPEN}",
+
         "placements_in_progress": placements_in_progress,
         "companies_with_progress": companies_with_progress,
+        "placements_in_progress_url": placement_list + f"?status__exact={PlacementStatus.IN_PROGRESS}",
+
         "placements_sent": placements_sent,
+        "placements_sent_url": placement_list + f"?status__exact={PlacementStatus.SENT_TO_COMPANY}",
     }
 
 
@@ -171,6 +184,7 @@ def _build_student_counts() -> list[dict]:
     raw = dict(
         Student.objects.values_list("status").annotate(c=Count("id"))
     )
+    base_url = reverse("admin:students_student_changelist")
     order = [
         (StudentStatus.STUDYING, "Обучается", "purple"),
         (StudentStatus.WAITING, "Ожидает", "amber"),
@@ -179,7 +193,12 @@ def _build_student_counts() -> list[dict]:
         (StudentStatus.DROPPED, "Отчислен", "gray-light"),
     ]
     return [
-        {"label": label, "count": raw.get(status, 0), "color": color}
+        {
+            "label": label,
+            "count": raw.get(status, 0),
+            "color": color,
+            "url": base_url + f"?status__exact={status}",
+        }
         for status, label, color in order
     ]
 
@@ -188,21 +207,25 @@ def _build_company_counts(*, stale_cutoff) -> list[dict]:
     raw = dict(
         Company.objects.values_list("hiring_status").annotate(c=Count("id"))
     )
+    base_url = reverse("admin:companies_company_changelist")
     rows = [
         {
             "label": "Принимают",
             "count": raw.get(HiringStatus.OPEN, 0),
             "color": "green",
+            "url": base_url + f"?hiring_status__exact={HiringStatus.OPEN}",
         },
         {
             "label": "Пауза",
             "count": raw.get(HiringStatus.PAUSED, 0),
             "color": "amber",
+            "url": base_url + f"?hiring_status__exact={HiringStatus.PAUSED}",
         },
         {
             "label": "Не принимают",
             "count": raw.get(HiringStatus.CLOSED, 0),
             "color": "gray",
+            "url": base_url + f"?hiring_status__exact={HiringStatus.CLOSED}",
         },
     ]
 
@@ -223,6 +246,7 @@ def _build_company_counts(*, stale_cutoff) -> list[dict]:
                 "count": stale_companies,
                 "color": "red",
                 "highlight": True,
+                "url": base_url + "?has_stale=yes",
             }
         )
     return rows

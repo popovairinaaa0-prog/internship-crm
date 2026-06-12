@@ -24,6 +24,12 @@ ALLOWED_HOSTS = [
 
 
 INSTALLED_APPS = [
+    # Unfold должен идти ДО django.contrib.admin
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
+    "unfold.contrib.inlines",
+    "unfold.contrib.import_export",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -138,6 +144,112 @@ PLACEMENT_STALE_HIGHLIGHT_DAYS = 7
 PLACEMENT_STALE_CRITICAL_DAYS = 14
 COMPANY_PAUSE_ALERT_DAYS = 30
 PUSH_RULES_TICK_INTERVAL_MINUTES = 60
+
+
+# --- Unfold: современная тема для админки -------------------------------
+UNFOLD = {
+    "SITE_TITLE": "Internship CRM",
+    "SITE_HEADER": "Internship CRM",
+    "SITE_SUBHEADER": "Карьерный центр",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": False,
+    "THEME": None,  # позволяем переключать light/dark
+    "COLORS": {
+        # Мягкий фиолетовый (Tailwind violet) — не уставает глаз.
+        "primary": {
+            "50": "245 243 255",
+            "100": "237 233 254",
+            "200": "221 214 254",
+            "300": "196 181 253",
+            "400": "167 139 250",
+            "500": "139 92 246",
+            "600": "124 58 237",
+            "700": "109 40 217",
+            "800": "91 33 182",
+            "900": "76 29 149",
+            "950": "46 16 101",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": "Главное",
+                "separator": False,
+                "items": [
+                    {
+                        "title": "Дашборд",
+                        "icon": "dashboard",
+                        "link": "/admin/",
+                    },
+                    {
+                        "title": "Студенты",
+                        "icon": "school",
+                        "link": "/admin/students/student/",
+                    },
+                    {
+                        "title": "Компании",
+                        "icon": "business",
+                        "link": "/admin/companies/company/",
+                    },
+                    {
+                        "title": "Стажировки",
+                        "icon": "work",
+                        "link": "/admin/placements/placement/",
+                    },
+                    {
+                        "title": "Направления",
+                        "icon": "category",
+                        "link": "/admin/students/direction/",
+                    },
+                ],
+            },
+            {
+                "title": "Коммуникации",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Рассылки",
+                        "icon": "send",
+                        "link": "/admin/notifications/broadcastjob/",
+                    },
+                    {
+                        "title": "Шаблоны",
+                        "icon": "description",
+                        "link": "/admin/notifications/messagetemplate/",
+                    },
+                    {
+                        "title": "Автопуши",
+                        "icon": "notifications_active",
+                        "link": "/admin/notifications/pushrule/",
+                    },
+                    {
+                        "title": "Ручные контакты",
+                        "icon": "check_circle",
+                        "link": "/admin/notifications/manualcontact/",
+                    },
+                ],
+            },
+            {
+                "title": "Администрирование",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Пользователи",
+                        "icon": "person",
+                        "link": "/admin/accounts/user/",
+                    },
+                    {
+                        "title": "Группы",
+                        "icon": "groups",
+                        "link": "/admin/auth/group/",
+                    },
+                ],
+            },
+        ],
+    },
+}
 
 
 # Логирование — пишем в stdout, агрегацию отдаём docker logs / journald.

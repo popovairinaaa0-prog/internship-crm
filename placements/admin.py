@@ -8,6 +8,8 @@ from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
 
+from unfold.admin import ModelAdmin
+
 from accounts.admin_mixins import VipReadonlyMixin, is_vip
 
 from .models import Placement, PlacementStatus
@@ -24,16 +26,17 @@ _PLACEMENT_PILL_MAP = {
 
 
 @admin.register(Placement)
-class PlacementAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class PlacementAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = (
         "student",
         "company",
         "direction",
-        "status_pill",
+        "status",
         "days_since_change",
         "overdue_days",
         "sent_at",
     )
+    list_editable = ("status",)
     list_filter = ("status", "direction", "company")
     search_fields = ("student__full_name", "company__name", "comment")
     autocomplete_fields = ("student", "company", "direction")

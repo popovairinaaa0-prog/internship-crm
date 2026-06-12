@@ -6,10 +6,17 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import admin
-from django.contrib.contenttypes.admin import GenericTabularInline
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.html import format_html
+
+from django.contrib.contenttypes.admin import GenericTabularInline as DjangoGenericTabularInline
+
+from unfold.admin import ModelAdmin, TabularInline
+
+
+class GenericTabularInline(DjangoGenericTabularInline, TabularInline):
+    pass
 
 from accounts.admin_mixins import VipReadonlyMixin
 from notifications.models import Comment
@@ -41,7 +48,7 @@ class HasStalePlacementsFilter(admin.SimpleListFilter):
         return queryset
 
 
-class PlacementForCompanyInline(admin.TabularInline):
+class PlacementForCompanyInline(TabularInline):
     model = Placement
     fk_name = "company"
     extra = 0
@@ -63,15 +70,16 @@ class CommentInline(GenericTabularInline):
 
 
 @admin.register(Company)
-class CompanyAdmin(VipReadonlyMixin, admin.ModelAdmin):
+class CompanyAdmin(VipReadonlyMixin, ModelAdmin):
     list_display = (
         "name",
         "directions_list",
-        "hiring_pill",
+        "hiring_status",
         "active_count",
         "stale_count_display",
         "next_contact_at",
     )
+    list_editable = ("hiring_status",)
     list_filter = ("hiring_status", "directions", HasStalePlacementsFilter)
     search_fields = ("name", "contacts")
     filter_horizontal = ("directions",)
