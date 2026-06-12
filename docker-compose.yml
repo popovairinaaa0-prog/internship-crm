@@ -38,6 +38,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgres://crm:crm@postgres:5432/crm
+      CRM_API_BASE_URL: http://web:8000
     volumes:
       - .:/app
     depends_on:

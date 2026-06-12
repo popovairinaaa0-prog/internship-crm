@@ -124,9 +124,13 @@ Q_CLUSTER = {
 
 # Telegram-боты
 STUDENT_BOT_TOKEN = os.environ.get("STUDENT_BOT_TOKEN", "")
+STUDENT_BOT_USERNAME = os.environ.get("STUDENT_BOT_USERNAME", "")
 MANAGERS_BOT_TOKEN = os.environ.get("MANAGERS_BOT_TOKEN", "")
+MANAGERS_BOT_USERNAME = os.environ.get("MANAGERS_BOT_USERNAME", "")
 MANAGERS_CHAT_ID = os.environ.get("MANAGERS_CHAT_ID", "")
 BOT_API_TOKEN = os.environ.get("BOT_API_TOKEN", "")
+# Куда бот ходит за Django API. В docker-compose переопределяется на http://web:8000.
+CRM_API_BASE_URL = os.environ.get("CRM_API_BASE_URL", "http://localhost:8000")
 
 
 # Настройки автопушей (см. CLAUDE.md → «Настройки автопушей»)

@@ -10,4 +10,5 @@ admin.site.index_title = "Главная"
 urlpatterns = [
     path("admin/notifications/", include("notifications.urls")),
     path("admin/", admin.site.urls),
+    path("api/students/", include("students.api.urls")),
 ]

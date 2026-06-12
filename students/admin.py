@@ -18,6 +18,7 @@ from notifications.models import Comment
 from placements.models import Placement
 
 from .models import Direction, Student, StudentStatus, TelegramInviteToken
+from .services import create_invite_link
 
 
 # --- Кастомный фильтр по дате контакта ----------------------------------
@@ -109,7 +110,7 @@ class StudentAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_select_related = False
     filter_horizontal = ("directions",)
     inlines = [PlacementForStudentInline, CommentInline]
-    actions = ["send_broadcast_to_selected"]
+    actions = ["send_broadcast_to_selected", "generate_telegram_links"]
     save_on_top = True
 
     class Media:
@@ -194,6 +195,46 @@ class StudentAdmin(VipReadonlyMixin, admin.ModelAdmin):
             {"ids": ",".join(map(str, ids))}
         )
         return HttpResponseRedirect(url)
+
+    @admin.action(description="Сгенерировать ссылку для Telegram")
+    def generate_telegram_links(self, request, queryset):
+        ids = list(queryset.values_list("pk", flat=True))
+        if not ids:
+            self.message_user(
+                request, "Не выбрано ни одного студента.", level=messages.WARNING
+            )
+            return None
+        url = reverse("admin:students_invite_links") + "?" + urlencode(
+            {"ids": ",".join(map(str, ids))}
+        )
+        return HttpResponseRedirect(url)
+
+    def get_urls(self):
+        from django.urls import path as urls_path
+
+        urls = super().get_urls()
+        return [
+            urls_path(
+                "invite-links/",
+                self.admin_site.admin_view(self._invite_links_view),
+                name="students_invite_links",
+            ),
+        ] + urls
+
+    def _invite_links_view(self, request):
+        from django.shortcuts import render
+
+        raw_ids = request.GET.get("ids", "")
+        pks = [int(x) for x in raw_ids.split(",") if x.strip().isdigit()]
+        students = list(Student.objects.filter(pk__in=pks))
+        items = [
+            {"student": s, "url": create_invite_link(s)} for s in students
+        ]
+        return render(
+            request,
+            "admin/students/invite_links.html",
+            {"items": items, "title": "Ссылки для Telegram"},
+        )
 
 
 # --- DirectionAdmin -----------------------------------------------------

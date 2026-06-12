@@ -1,0 +1,54 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Главная</a> &rsaquo;
+        <a href="{% url 'admin:students_student_changelist' %}">Студенты</a> &rsaquo;
+        Ссылки для Telegram
+    </div>
+{% endblock %}
+
+{% block content %}
+    <h1>Ссылки для Telegram</h1>
+
+    <p style="margin-bottom: 16px;">
+        Для каждого студента сгенерирован одноразовый токен. Срок действия — 30 дней.
+        Скопируйте ссылку и отправьте студенту любым удобным способом.
+    </p>
+
+    {% if items %}
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="text-align: left; padding: 6px 10px;">Студент</th>
+                    <th style="text-align: left; padding: 6px 10px;">Ссылка</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr style="border-top: 1px solid #e5e7eb;">
+                        <td style="padding: 8px 10px;">
+                            <strong>{{ item.student.full_name }}</strong><br>
+                            <span style="opacity: 0.6; font-size: 12px;">
+                                {% if item.student.telegram_username %}@{{ item.student.telegram_username }}{% endif %}
+                            </span>
+                        </td>
+                        <td style="padding: 8px 10px;">
+                            <input type="text"
+                                   value="{{ item.url }}"
+                                   readonly
+                                   style="width: 100%; padding: 6px; font-family: monospace;"
+                                   onclick="this.select();">
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Студенты не выбраны.</p>
+    {% endif %}
+
+    <p style="margin-top: 20px;">
+        <a href="{% url 'admin:students_student_changelist' %}">← К списку студентов</a>
+    </p>
+{% endblock %}
