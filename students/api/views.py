@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Q
+from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from students.models import Student
 from students.services import consume_invite_token
 
 
@@ -65,3 +69,25 @@ class ConsumeInviteView(APIView):
             return Response({"ok": False, "error": "invalid_token"})
 
         return Response({"ok": True, "name": student.full_name})
+
+
+@staff_member_required
+def student_autocomplete(request):
+    """JSON-эндпоинт для autocomplete на форме рассылки.
+
+    Возвращает до 20 студентов, у которых ФИО/telegram_username содержат `q`.
+    """
+    q = request.GET.get("q", "").strip()
+    qs = Student.objects.all()
+    if q:
+        qs = qs.filter(Q(full_name__icontains=q) | Q(telegram_username__icontains=q))
+    results = [
+        {
+            "id": s.pk,
+            "label": s.full_name,
+            "telegram_username": s.telegram_username,
+            "has_chat_id": s.telegram_chat_id is not None,
+        }
+        for s in qs.order_by("full_name")[:20]
+    ]
+    return JsonResponse({"results": results})

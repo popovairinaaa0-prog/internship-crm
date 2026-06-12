@@ -1,0 +1,323 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+<style>
+    .bc-grid {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 24px;
+        align-items: start;
+    }
+    .bc-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 16px;
+    }
+    .bc-card h2 {
+        margin-top: 0;
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: #1f2937;
+    }
+    textarea.bc-text {
+        width: 100%;
+        min-height: 180px;
+        font-family: inherit;
+        font-size: 14px;
+        padding: 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        resize: vertical;
+    }
+    .bc-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 6px;
+    }
+    .bc-preview {
+        background: #f9fafb;
+        border: 1px dashed #d1d5db;
+        border-radius: 4px;
+        padding: 12px;
+        white-space: pre-wrap;
+        font-size: 14px;
+        margin-top: 16px;
+        min-height: 60px;
+    }
+    .bc-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .bc-actions button {
+        padding: 8px 16px;
+        border: 0;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .bc-btn-primary { background: #1e40af; color: #fff; }
+    .bc-btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+    .bc-btn-secondary { background: #f3f4f6; color: #1f2937; }
+    .bc-count-line {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    .bc-count-line .bc-reachable { color: #166534; font-weight: 600; }
+    .bc-search {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    .bc-autocomplete {
+        position: relative;
+    }
+    .bc-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        max-height: 240px;
+        overflow-y: auto;
+        z-index: 10;
+        margin-top: -4px;
+    }
+    .bc-suggestion {
+        padding: 8px 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .bc-suggestion:hover { background: #eff6ff; }
+    .bc-recipients {
+        max-height: 340px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+    }
+    .bc-recipient {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 10px;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 13px;
+    }
+    .bc-recipient.no-chat {
+        background: #fffbeb;
+    }
+    .bc-recipient .bc-x {
+        cursor: pointer;
+        color: #6b7280;
+        font-size: 16px;
+        padding: 0 4px;
+    }
+    .bc-recipient .bc-x:hover { color: #991b1b; }
+    .bc-warn { color: #92400e; font-size: 11px; display: block; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Главная</a> &rsaquo; Рассылка
+    </div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<form method="post" id="bc-form">
+    {% csrf_token %}
+    <input type="hidden" name="recipient_ids" id="bc-recipient-ids" value="{% for s in recipients %}{{ s.pk }}{% if not forloop.last %},{% endif %}{% endfor %}">
+
+    <div class="bc-grid">
+        <!-- Левая колонка: текст и предпросмотр -->
+        <div class="bc-card">
+            <h2>Текст сообщения</h2>
+            <textarea name="message_text" id="bc-text" class="bc-text" maxlength="4096"
+                placeholder="Привет, {имя}! ...">Привет, {имя}!</textarea>
+            <div class="bc-meta">
+                <span>Подстановки: <code>{имя}</code></span>
+                <span><span id="bc-len">0</span> / 4096</span>
+            </div>
+
+            <h2 style="margin-top: 20px;">Предпросмотр</h2>
+            <div class="bc-preview" id="bc-preview">{{ preview_text }}</div>
+            <div class="bc-meta">
+                {% if preview_for %}
+                    для {{ preview_for.full_name }}
+                {% else %}
+                    выберите получателя для предпросмотра
+                {% endif %}
+            </div>
+
+            <div class="bc-actions">
+                <button type="submit" name="action" value="draft" class="bc-btn-secondary">
+                    Сохранить черновик
+                </button>
+                <button type="submit" name="action" value="send" id="bc-send" class="bc-btn-primary">
+                    Отправить (<span id="bc-send-count">{{ recipients|length }}</span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- Правая колонка: получатели -->
+        <div class="bc-card">
+            <h2>Получатели · <span id="bc-total">{{ recipients|length }}</span></h2>
+            <div class="bc-count-line">
+                <span>всего в списке</span>
+                <span class="bc-reachable"><span id="bc-reachable">0</span> дойдёт</span>
+            </div>
+
+            <div class="bc-autocomplete">
+                <input type="text" id="bc-search" class="bc-search"
+                    placeholder="Добавить студента..." autocomplete="off">
+                <div id="bc-suggestions" class="bc-suggestions" style="display: none;"></div>
+            </div>
+
+            <div class="bc-recipients" id="bc-recipients"></div>
+        </div>
+    </div>
+</form>
+
+<script>
+(function() {
+    const initial = {{ recipients_json|safe }};
+    let state = initial.slice();
+
+    const $text = document.getElementById('bc-text');
+    const $preview = document.getElementById('bc-preview');
+    const $len = document.getElementById('bc-len');
+    const $list = document.getElementById('bc-recipients');
+    const $total = document.getElementById('bc-total');
+    const $reachable = document.getElementById('bc-reachable');
+    const $sendCount = document.getElementById('bc-send-count');
+    const $sendBtn = document.getElementById('bc-send');
+    const $idsInput = document.getElementById('bc-recipient-ids');
+    const $search = document.getElementById('bc-search');
+    const $suggestions = document.getElementById('bc-suggestions');
+
+    function render() {
+        // Recipients list
+        $list.innerHTML = '';
+        state.forEach(s => {
+            const row = document.createElement('div');
+            row.className = 'bc-recipient' + (s.has_chat_id ? '' : ' no-chat');
+            row.innerHTML = `
+                <div>
+                    <strong>${escapeHtml(s.label)}</strong>
+                    ${s.telegram_username ? '<span style="color:#6b7280">· @' + escapeHtml(s.telegram_username) + '</span>' : ''}
+                    ${!s.has_chat_id ? '<span class="bc-warn">не подписан на бот</span>' : ''}
+                </div>
+                <span class="bc-x" data-id="${s.id}" title="Убрать">×</span>
+            `;
+            $list.appendChild(row);
+        });
+
+        const total = state.length;
+        const reachable = state.filter(s => s.has_chat_id).length;
+        $total.textContent = total;
+        $reachable.textContent = reachable;
+        $sendCount.textContent = total;
+        $sendBtn.disabled = total === 0;
+
+        $idsInput.value = state.map(s => s.id).join(',');
+
+        renderPreview();
+    }
+
+    function renderPreview() {
+        const text = $text.value;
+        $len.textContent = text.length;
+        const first = state[0];
+        const name = first ? first.label.split(' ')[0] : 'друг';
+        $preview.textContent = text.replace(/\{имя\}/g, name);
+    }
+
+    function escapeHtml(s) {
+        return String(s || '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
+
+    $list.addEventListener('click', e => {
+        if (e.target.classList.contains('bc-x')) {
+            const id = parseInt(e.target.dataset.id, 10);
+            state = state.filter(s => s.id !== id);
+            render();
+        }
+    });
+
+    $text.addEventListener('input', renderPreview);
+
+    // Autocomplete
+    let searchTimer = null;
+    $search.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        const q = $search.value.trim();
+        if (q.length < 2) {
+            $suggestions.style.display = 'none';
+            return;
+        }
+        searchTimer = setTimeout(() => fetchSuggestions(q), 200);
+    });
+
+    async function fetchSuggestions(q) {
+        try {
+            const resp = await fetch(`/api/students/autocomplete/?q=${encodeURIComponent(q)}`);
+            const data = await resp.json();
+            const existing = new Set(state.map(s => s.id));
+            const filtered = data.results.filter(s => !existing.has(s.id));
+            if (filtered.length === 0) {
+                $suggestions.style.display = 'none';
+                return;
+            }
+            $suggestions.innerHTML = filtered.map(s => `
+                <div class="bc-suggestion" data-id="${s.id}">
+                    <strong>${escapeHtml(s.label)}</strong>
+                    ${s.telegram_username ? '<span style="color:#6b7280">· @' + escapeHtml(s.telegram_username) + '</span>' : ''}
+                    ${!s.has_chat_id ? '<span class="bc-warn">не подписан</span>' : ''}
+                </div>
+            `).join('');
+            $suggestions.style.display = 'block';
+            // привяжем клики
+            $suggestions.querySelectorAll('.bc-suggestion').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = parseInt(el.dataset.id, 10);
+                    const found = filtered.find(s => s.id === id);
+                    if (found) {
+                        state.push(found);
+                        $search.value = '';
+                        $suggestions.style.display = 'none';
+                        render();
+                    }
+                });
+            });
+        } catch (err) {
+            console.warn(err);
+        }
+    }
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.bc-autocomplete')) {
+            $suggestions.style.display = 'none';
+        }
+    });
+
+    render();
+})();
+</script>
+{% endblock %}

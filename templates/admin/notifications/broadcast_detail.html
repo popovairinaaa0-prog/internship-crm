@@ -1,0 +1,138 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrahead %}
+<style>
+    .bc-summary {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+    .bc-status-pill {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    .bc-status--PENDING { background: #f3f4f6; color: #1f2937; }
+    .bc-status--RUNNING { background: #eff6ff; color: #1e40af; }
+    .bc-status--DONE    { background: #f0fdf4; color: #166534; }
+    .bc-status--FAILED  { background: #fef2f2; color: #991b1b; }
+    .bc-stats {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .bc-stat {
+        background: #f9fafb;
+        border-radius: 6px;
+        padding: 12px;
+        text-align: center;
+    }
+    .bc-stat-value { font-size: 22px; font-weight: 700; color: #1f2937; }
+    .bc-stat-label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+    .bc-text-block {
+        background: #f9fafb;
+        border-left: 3px solid #1e40af;
+        padding: 10px 14px;
+        white-space: pre-wrap;
+        font-size: 14px;
+        margin-top: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Главная</a> &rsaquo;
+        <a href="{% url 'admin:notifications_broadcastjob_changelist' %}">Рассылки</a> &rsaquo;
+        #{{ job.pk }}
+    </div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="bc-summary">
+    <div>
+        <span class="bc-status-pill bc-status--{{ job.status }}" id="bc-status">
+            {{ job.get_status_display }}
+        </span>
+        <span style="margin-left: 12px; color: #6b7280;">
+            Автор: {{ job.created_by|default:"—" }} ·
+            Создана: {{ job.created_at|date:"d.m.Y H:i" }}
+            {% if job.finished_at %} · Завершена: {{ job.finished_at|date:"d.m.Y H:i" }}{% endif %}
+        </span>
+    </div>
+
+    <div class="bc-stats">
+        <div class="bc-stat">
+            <div class="bc-stat-value" id="bc-sent">{{ stats.sent }}</div>
+            <div class="bc-stat-label">отправлено</div>
+        </div>
+        <div class="bc-stat">
+            <div class="bc-stat-value" id="bc-pending">{{ stats.pending }}</div>
+            <div class="bc-stat-label">в очереди</div>
+        </div>
+        <div class="bc-stat">
+            <div class="bc-stat-value" id="bc-blocked">{{ stats.blocked }}</div>
+            <div class="bc-stat-label">заблокировали</div>
+        </div>
+        <div class="bc-stat">
+            <div class="bc-stat-value" id="bc-no-chat">{{ stats.no_chat_id }}</div>
+            <div class="bc-stat-label">без подписки</div>
+        </div>
+        <div class="bc-stat">
+            <div class="bc-stat-value" id="bc-failed">{{ stats.failed }}</div>
+            <div class="bc-stat-label">ошибок</div>
+        </div>
+    </div>
+</div>
+
+<h2>Текст сообщения</h2>
+<div class="bc-text-block">{{ job.message_text }}</div>
+
+<p style="margin-top: 24px;">
+    <a href="{% url 'admin:notifications_broadcastjob_changelist' %}">← Ко всем рассылкам</a>
+</p>
+
+{% if not is_finished %}
+<script>
+(function() {
+    const statusUrl = "{{ status_url }}";
+    const pillSelector = "bc-status";
+    let timer = null;
+
+    async function poll() {
+        try {
+            const resp = await fetch(statusUrl);
+            const data = await resp.json();
+
+            // Обновляем плашку статуса
+            const $pill = document.getElementById(pillSelector);
+            $pill.textContent = data.status_label;
+            $pill.className = "bc-status-pill bc-status--" + data.status;
+
+            // Обновляем счётчики
+            document.getElementById('bc-sent').textContent = data.stats.sent;
+            document.getElementById('bc-pending').textContent = data.stats.pending;
+            document.getElementById('bc-blocked').textContent = data.stats.blocked;
+            document.getElementById('bc-no-chat').textContent = data.stats.no_chat_id;
+            document.getElementById('bc-failed').textContent = data.stats.failed;
+
+            if (data.is_finished) {
+                clearInterval(timer);
+            }
+        } catch (err) {
+            console.warn(err);
+        }
+    }
+
+    timer = setInterval(poll, 3000);
+})();
+</script>
+{% endif %}
+{% endblock %}
