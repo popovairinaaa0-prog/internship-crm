@@ -1,0 +1,14 @@
+{% extends "admin/change_list.html" %}
+
+{% block content_title %}
+    {{ block.super }}
+    {% if audience_counts %}
+        <div style="margin-top: 12px;">
+            {% for label, count in audience_counts.items %}
+                <span class="pushrule-audience-header">
+                    {{ label }} · {{ count }}
+                </span>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}

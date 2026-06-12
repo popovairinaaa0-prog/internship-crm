@@ -1,0 +1,22 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls %}
+
+{% block content_title %}
+    {{ block.super }}
+    {% if show_contact_sections and section_counts %}
+        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <span class="section-header section-header--overdue">
+                Просрочено · {{ section_counts.overdue }}
+            </span>
+            <span class="section-header section-header--today">
+                Сегодня · {{ section_counts.today }}
+            </span>
+            <span class="section-header section-header--soon">
+                Скоро · {{ section_counts.soon }}
+            </span>
+            <span class="section-header section-header--none">
+                Без даты · {{ section_counts.none }}
+            </span>
+        </div>
+    {% endif %}
+{% endblock %}

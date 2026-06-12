@@ -10,6 +10,7 @@ class UserAdmin(DjangoUserAdmin):
         ("Telegram", {"fields": ("telegram_chat_id",)}),
     )
     list_display = ("username", "first_name", "last_name", "email", "telegram_chat_id", "is_staff")
+    search_fields = ("username", "first_name", "last_name", "email")
 
 
 admin.site.register(ManagerInviteToken)

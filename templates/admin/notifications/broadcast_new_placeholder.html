@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Главная</a>
+        &rsaquo; Рассылка
+    </div>
+{% endblock %}
+
+{% block content %}
+    <h1>Рассылка в Telegram</h1>
+
+    <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
+        <strong>Этап 7</strong> — форма рассылки появится здесь. Сейчас это просто список
+        выбранных вами студентов.
+    </div>
+
+    <h2>Выбрано: {{ count }}</h2>
+
+    {% if students %}
+        <ul>
+            {% for s in students %}
+                <li>
+                    <strong>{{ s.full_name }}</strong>
+                    {% if s.telegram_username %}· @{{ s.telegram_username }}{% endif %}
+                    {% if s.telegram_chat_id %}
+                        <span style="color: #166534;">✓ подписан</span>
+                    {% else %}
+                        <span style="color: #92400e;">не подписан на бот</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Никого не выбрано. Зайдите в список студентов, отметьте чекбоксами и используйте действие «Отправить рассылку выбранным».</p>
+    {% endif %}
+
+    <p><a href="{% url 'admin:students_student_changelist' %}">← К списку студентов</a></p>
+{% endblock %}
