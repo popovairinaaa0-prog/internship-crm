@@ -1,0 +1,11 @@
+ФИО,Telegram,Телефон,Email,Направления,Статус,Гид,Маркетплейс,Следующий контакт,Заметки
+Иванова Анна,@anna_ivanova, +7 (916) 123-45-67 ,anna.ivanova@example.com,"Python, QA",обучается,https://guide.example/anna,,15.06.2026,Активная — отвечает быстро
+Петров Сергей,sergey_petrov,89261234567,petrov@mail.ru,Frontend,ожидает стажировку,,https://market.example/petrov,01.07.2026,
+Сидоров Михаил,, ,sidorov@yahoo.com,"QA, Frontend",проходит,,,18.06.2026,Сейчас в Ромашке
+Кузнецова Мария,@mariakuz,,mariakuz@gmail.com,Data Analytics,обучается,https://guide.example/mariakuz,,2026-06-30,
+Новиков Олег,olegnovikov,+7-921-555-44-33,,Python,прошёл,,,,Готов рекомендовать новым
+Смирнова Юлия,,,julia.smirnova@mail.ru,"Python, Data Analytics",ожидает,,,12.06.2026,В отпуске до 20.06
+Васильев Игорь,igor_v,,igor.v@example.com,QA,отчислен,,,,Прекратил обучение в апреле
+Морозов Артём,,+79261119900,morozov.art@gmail.com,Frontend,обучается,,,25.06.2026,
+Соколова Дарья,@daria_sokolova,,,Data Analytics,ожидает,,,,Не указан email — нужно уточнить
+Лебедев Павел, lebedev_p ,+7 925 111 22 33,lebedev@example.com,"Python, MacOS Development",обучается,https://guide.example/pavel,https://market.example/pavel,20.06.2026,Кандидат на ранний выпуск
