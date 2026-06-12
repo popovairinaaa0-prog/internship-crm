@@ -8,6 +8,8 @@ from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
 
+from accounts.admin_mixins import VipReadonlyMixin, is_vip
+
 from .models import Placement, PlacementStatus
 from .services import change_placement_status
 
@@ -22,7 +24,7 @@ _PLACEMENT_PILL_MAP = {
 
 
 @admin.register(Placement)
-class PlacementAdmin(admin.ModelAdmin):
+class PlacementAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = (
         "student",
         "company",
@@ -42,8 +44,26 @@ class PlacementAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+    # Для VIP-менеджера всё кроме `status` становится readonly — VIP может
+    # только двигать статус связки, остальное только смотрит.
+    _VIP_EXTRA_READONLY = (
+        "student",
+        "company",
+        "direction",
+        "sent_at",
+        "started_at",
+        "planned_duration_days",
+        "comment",
+        "created_by",
+    )
     save_on_top = True
     list_select_related = ("student", "company", "direction")
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = tuple(super().get_readonly_fields(request, obj))
+        if is_vip(request.user):
+            fields = fields + self._VIP_EXTRA_READONLY
+        return fields
 
     class Media:
         css = {"all": ("admin/css/admin_custom.css",)}

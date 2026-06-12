@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
+from accounts.admin_mixins import VipReadonlyMixin
 from notifications.models import Comment
 from placements.models import Placement
 
@@ -94,7 +95,7 @@ def _student_status_pill(status: str) -> str:
 
 
 @admin.register(Student)
-class StudentAdmin(admin.ModelAdmin):
+class StudentAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = (
         "full_name",
         "telegram_indicator",
@@ -211,7 +212,7 @@ def show_directions(modeladmin, request, queryset):
 
 
 @admin.register(Direction)
-class DirectionAdmin(admin.ModelAdmin):
+class DirectionAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = ("name", "slug", "is_active", "students_count", "companies_count")
     list_editable = ("is_active",)
     list_filter = ("is_active",)

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from django.contrib import admin
 
+from accounts.admin_mixins import VipReadonlyMixin, is_vip
+
 from .models import (
     Attachment,
     BroadcastDelivery,
@@ -18,7 +20,7 @@ from .models import (
 
 
 @admin.register(MessageTemplate)
-class MessageTemplateAdmin(admin.ModelAdmin):
+class MessageTemplateAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = ("name", "code", "audience", "is_active", "updated_at")
     list_filter = ("audience", "is_active")
     search_fields = ("name", "code", "text")
@@ -30,7 +32,7 @@ class MessageTemplateAdmin(admin.ModelAdmin):
 
 
 @admin.register(PushRule)
-class PushRuleAdmin(admin.ModelAdmin):
+class PushRuleAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = (
         "name",
         "audience_display",
@@ -70,7 +72,7 @@ class PushRuleAdmin(admin.ModelAdmin):
 
 
 @admin.register(BroadcastJob)
-class BroadcastJobAdmin(admin.ModelAdmin):
+class BroadcastJobAdmin(VipReadonlyMixin, admin.ModelAdmin):
     """Рассылки создаются через свой view (этап 7). Здесь — только просмотр."""
 
     list_display = (
@@ -103,7 +105,7 @@ class BroadcastJobAdmin(admin.ModelAdmin):
 
 
 @admin.register(BroadcastDelivery)
-class BroadcastDeliveryAdmin(admin.ModelAdmin):
+class BroadcastDeliveryAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = ("job", "student", "status", "sent_at")
     list_filter = ("status",)
     search_fields = ("student__full_name",)
@@ -114,7 +116,7 @@ class BroadcastDeliveryAdmin(admin.ModelAdmin):
 
 
 @admin.register(ManualContact)
-class ManualContactAdmin(admin.ModelAdmin):
+class ManualContactAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = ("student", "manager", "broadcast_job", "contacted_at")
     list_filter = ("manager",)
     search_fields = ("student__full_name", "note")
@@ -122,15 +124,37 @@ class ManualContactAdmin(admin.ModelAdmin):
 
 
 @admin.register(Comment)
-class CommentAdmin(admin.ModelAdmin):
+class CommentAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = ("id", "content_type", "object_id", "author", "created_at")
     list_filter = ("content_type",)
     search_fields = ("text",)
     autocomplete_fields = ("author",)
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if is_vip(request.user):
+            qs = qs.filter(author=request.user)
+        return qs
+
+    def has_change_permission(self, request, obj=None):
+        ok = super().has_change_permission(request, obj)
+        if not ok:
+            return False
+        if obj is not None and is_vip(request.user) and obj.author_id != request.user.id:
+            return False
+        return True
+
+    def save_model(self, request, obj, form, change):
+        # При создании через админку проставляем автором текущего пользователя,
+        # если он не указан явно. Это упрощает VIP-сценарий: их комментарии
+        # автоматически становятся «своими».
+        if not change and obj.author_id is None:
+            obj.author = request.user
+        super().save_model(request, obj, form, change)
+
 
 @admin.register(Attachment)
-class AttachmentAdmin(admin.ModelAdmin):
+class AttachmentAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = ("original_name", "content_type", "object_id", "uploaded_by", "created_at")
     list_filter = ("content_type",)
     search_fields = ("original_name",)
@@ -138,7 +162,7 @@ class AttachmentAdmin(admin.ModelAdmin):
 
 
 @admin.register(PushSent)
-class PushSentAdmin(admin.ModelAdmin):
+class PushSentAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = ("rule", "sent_at", "recipient_chat_id", "response_callback")
     list_filter = ("rule",)
     readonly_fields = (

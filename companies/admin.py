@@ -11,6 +11,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.html import format_html
 
+from accounts.admin_mixins import VipReadonlyMixin
 from notifications.models import Comment
 from placements.models import ACTIVE_STATUSES, Placement, PlacementStatus
 
@@ -61,7 +62,7 @@ class CommentInline(GenericTabularInline):
 
 
 @admin.register(Company)
-class CompanyAdmin(admin.ModelAdmin):
+class CompanyAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = (
         "name",
         "directions_list",
