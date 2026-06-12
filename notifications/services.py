@@ -8,6 +8,7 @@ from typing import Any, Iterable
 
 import httpx
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 from django_q.tasks import async_task
@@ -19,6 +20,7 @@ from .models import (
     BroadcastJob,
     BroadcastStatus,
     DeliveryStatus,
+    ManualContact,
 )
 
 
@@ -202,6 +204,13 @@ def run_broadcast_worker(
         job.save(update_fields=["status", "finished_at"])
         raise
 
+    # После завершения — уведомляем менеджеров о студентах без подписки.
+    # Ошибки тут НЕ должны валить сам Job (он уже DONE).
+    try:
+        notify_managers_about_unreachable(job)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("notify_managers failed for job %s: %s", job.pk, exc)
+
 
 def collect_delivery_stats(job: BroadcastJob) -> dict[str, int]:
     """Сводка по доставкам для UI/JSON-эндпоинта."""
@@ -215,6 +224,133 @@ def collect_delivery_stats(job: BroadcastJob) -> dict[str, int]:
         "failed": qs.filter(status=DeliveryStatus.FAILED).count(),
     }
     return stats
+
+
+# --- Служебный бот: уведомления о непривязанных и ручные отметки -----
+
+
+def _format_unreachable_message(job: BroadcastJob, deliveries) -> str:
+    """Собирает HTML-текст уведомления для служебного чата."""
+    author = job.created_by.get_full_name() if job.created_by else "—"
+    if job.created_by and not author:
+        author = job.created_by.username
+
+    lines = [
+        f"<b>{deliveries.count()} студентов без подписки на бот</b>",
+        f"<i>Рассылка #{job.pk} от {author}, {job.created_at:%d.%m.%Y %H:%M}</i>",
+        "",
+    ]
+    for idx, delivery in enumerate(deliveries, start=1):
+        s = delivery.student
+        directions = ", ".join(d.name for d in s.directions.all()) or "—"
+        lines.append(f"{idx}. <b>{s.full_name}</b> · {directions}")
+        if s.telegram_username:
+            lines.append(f"@{s.telegram_username}")
+        elif s.phone:
+            lines.append(f"нет telegram, тел. {s.phone}")
+        else:
+            lines.append("контакта нет")
+        lines.append("")
+
+    lines.append("———")
+    lines.append("Текст рассылки:")
+    lines.append(f"<i>{job.message_text}</i>")
+    return "\n".join(lines)
+
+
+def _build_manual_contact_keyboard(deliveries, job: BroadcastJob) -> list[list[dict]]:
+    """Одна кнопка на строку — по одной на каждого студента."""
+    return [
+        [
+            {
+                "text": f"✓ Написал(а) {d.student.full_name}",
+                "callback_data": f"manual_contact:{d.student_id}:{job.pk}",
+            }
+        ]
+        for d in deliveries
+    ]
+
+
+def notify_managers_about_unreachable(
+    job: BroadcastJob,
+    *,
+    _send=send_telegram_message,
+) -> int:
+    """Шлёт в служебный чат список студентов с NO_CHAT_ID и кнопки toggle.
+
+    Возвращает количество студентов в уведомлении. Если их нет — 0 и
+    ничего не шлёт.
+    """
+    deliveries = list(
+        BroadcastDelivery.objects.filter(job=job, status=DeliveryStatus.NO_CHAT_ID)
+        .select_related("student")
+        .prefetch_related("student__directions")
+        .order_by("student__full_name")
+    )
+    if not deliveries:
+        return 0
+
+    chat_id_raw = getattr(settings, "MANAGERS_CHAT_ID", "")
+    bot_token = getattr(settings, "MANAGERS_BOT_TOKEN", "")
+    if not chat_id_raw or not bot_token:
+        logger.warning(
+            "notify_managers: MANAGERS_CHAT_ID или MANAGERS_BOT_TOKEN пуст — "
+            "уведомление о %d студентах не отправлено",
+            len(deliveries),
+        )
+        return 0
+    try:
+        chat_id = int(chat_id_raw)
+    except (TypeError, ValueError):
+        logger.error("notify_managers: MANAGERS_CHAT_ID не число: %r", chat_id_raw)
+        return 0
+
+    text = _format_unreachable_message(job, BroadcastDelivery.objects.filter(pk__in=[d.pk for d in deliveries]))
+    keyboard = _build_manual_contact_keyboard(deliveries, job)
+
+    _send(chat_id, text, bot_token, inline_buttons=keyboard)
+    return len(deliveries)
+
+
+def register_manual_contact(
+    student_id: int,
+    broadcast_job_id: int | None,
+    manager_telegram_id: int,
+) -> tuple[bool, ManualContact | None]:
+    """Toggle ручной отметки контакта.
+
+    Если менеджер не привязан (нет User с таким telegram_chat_id) — возвращает
+    (False, None). Если запись уже есть — удаляет (False, contact). Иначе
+    создаёт новую (True, contact).
+    """
+    User = get_user_model()
+    manager = User.objects.filter(telegram_chat_id=manager_telegram_id).first()
+    if manager is None:
+        return False, None
+
+    existing = ManualContact.objects.filter(
+        student_id=student_id,
+        broadcast_job_id=broadcast_job_id,
+        manager=manager,
+    ).first()
+    if existing is not None:
+        existing.delete()
+        logger.info(
+            "manual_contact removed: student=%s, job=%s, manager=%s",
+            student_id, broadcast_job_id, manager.pk,
+        )
+        return False, existing
+
+    contact = ManualContact.objects.create(
+        student_id=student_id,
+        broadcast_job_id=broadcast_job_id,
+        manager=manager,
+    )
+    logger.info(
+        "manual_contact created: student=%s, job=%s, manager=%s",
+        student_id, broadcast_job_id, manager.pk,
+    )
+    return True, contact
 
 
 def create_broadcast_job(

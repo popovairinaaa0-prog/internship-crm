@@ -14,7 +14,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from accounts.admin_mixins import VipReadonlyMixin
-from notifications.models import Comment
+from notifications.models import Comment, ManualContact
 from placements.models import Placement
 
 from .models import Direction, Student, StudentStatus, TelegramInviteToken
@@ -75,6 +75,21 @@ class CommentInline(GenericTabularInline):
     verbose_name_plural = "Комментарии"
 
 
+class ManualContactInline(admin.TabularInline):
+    model = ManualContact
+    fk_name = "student"
+    extra = 0
+    fields = ("manager", "broadcast_job", "contacted_at", "note")
+    readonly_fields = ("manager", "broadcast_job", "contacted_at")
+    can_delete = False
+    show_change_link = False
+    verbose_name = "Ручной контакт"
+    verbose_name_plural = "Ручные контакты"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 # --- Хелперы плашек -----------------------------------------------------
 
 _STUDENT_PILL_MAP = {
@@ -109,7 +124,7 @@ class StudentAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_per_page = 20
     list_select_related = False
     filter_horizontal = ("directions",)
-    inlines = [PlacementForStudentInline, CommentInline]
+    inlines = [PlacementForStudentInline, CommentInline, ManualContactInline]
     actions = ["send_broadcast_to_selected", "generate_telegram_links"]
     save_on_top = True
 

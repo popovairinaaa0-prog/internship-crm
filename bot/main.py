@@ -12,6 +12,7 @@ import logging
 from aiogram import Bot, Dispatcher
 
 from bot import settings as bot_settings
+from bot.managers_bot.handlers import router as managers_router
 from bot.student_bot.handlers import router as student_router
 
 logging.basicConfig(
@@ -34,6 +35,19 @@ async def run_student_bot() -> None:
         await bot.session.close()
 
 
+async def run_managers_bot() -> None:
+    token = bot_settings.ensure_managers_bot()
+    bot = Bot(token=token)
+    dp = Dispatcher()
+    dp.include_router(managers_router)
+
+    log.info("Служебный бот стартует (long polling)")
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
+
+
 async def main() -> None:
     tasks: list[asyncio.Task] = []
     if bot_settings.STUDENT_BOT_TOKEN:
@@ -41,7 +55,10 @@ async def main() -> None:
     else:
         log.warning("STUDENT_BOT_TOKEN пустой — студенческий бот не запущен.")
 
-    # TODO(stage 8): здесь добавится run_managers_bot()
+    if bot_settings.MANAGERS_BOT_TOKEN:
+        tasks.append(asyncio.create_task(run_managers_bot()))
+    else:
+        log.warning("MANAGERS_BOT_TOKEN пустой — служебный бот не запущен.")
 
     if not tasks:
         log.info("Ни один бот не запущен. Ставлю heartbeat в idle.")

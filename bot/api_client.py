@@ -51,13 +51,35 @@ class CrmApiClient:
 
     def consume_invite(self, token: str, chat_id: int) -> dict[str, Any]:
         """POST /api/students/consume-invite/. Возвращает JSON от сервера."""
+        return self._post("/api/students/consume-invite/", {"token": token, "chat_id": chat_id})
+
+    def consume_manager_invite(self, token: str, chat_id: int) -> dict[str, Any]:
+        """POST /api/managers/consume-invite/ для служебного бота."""
+        return self._post("/api/managers/consume-invite/", {"token": token, "chat_id": chat_id})
+
+    def register_manual_contact(
+        self,
+        student_id: int,
+        broadcast_job_id: int | None,
+        manager_telegram_id: int,
+    ) -> dict[str, Any]:
+        """POST /api/manual-contacts/ — toggle ручной отметки."""
+        return self._post(
+            "/api/manual-contacts/",
+            {
+                "student_id": student_id,
+                "broadcast_job_id": broadcast_job_id,
+                "manager_telegram_id": manager_telegram_id,
+            },
+        )
+
+    # --- low level ---------------------------------------------------
+
+    def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         try:
-            resp = self._client.post(
-                "/api/students/consume-invite/",
-                json={"token": token, "chat_id": chat_id},
-            )
+            resp = self._client.post(path, json=payload)
         except httpx.RequestError as exc:
-            logger.warning("consume_invite: сеть упала: %s", exc)
+            logger.warning("api %s: сеть упала: %s", path, exc)
             raise CrmApiError(f"network error: {exc}") from exc
 
         if resp.status_code == 401:

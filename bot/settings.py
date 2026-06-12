@@ -35,3 +35,11 @@ def ensure_student_bot() -> str:
     if not BOT_API_TOKEN:
         raise RuntimeError("BOT_API_TOKEN пустой — бот не сможет авторизоваться в Django.")
     return STUDENT_BOT_TOKEN
+
+
+def ensure_managers_bot() -> str:
+    if not MANAGERS_BOT_TOKEN:
+        raise RuntimeError("MANAGERS_BOT_TOKEN пустой — нечего запускать.")
+    if not BOT_API_TOKEN:
+        raise RuntimeError("BOT_API_TOKEN пустой — бот не сможет авторизоваться в Django.")
+    return MANAGERS_BOT_TOKEN
