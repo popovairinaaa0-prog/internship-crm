@@ -2,6 +2,7 @@
 
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
+from django.utils import timezone
 
 
 class HiringStatus(models.TextChoices):
@@ -31,6 +32,12 @@ class Company(models.Model):
         choices=HiringStatus.choices,
         default=HiringStatus.OPEN,
     )
+    status_changed_at = models.DateTimeField(
+        "Дата изменения статуса найма",
+        default=timezone.now,
+        editable=False,
+        help_text="Обновляется только через сервис change_company_status.",
+    )
     next_contact_at = models.DateField("Следующий контакт", null=True, blank=True)
     notes = models.TextField("Заметки", blank=True)
     created_at = models.DateTimeField("Создана", auto_now_add=True)
@@ -52,6 +59,7 @@ class Company(models.Model):
         indexes = [
             models.Index(fields=["hiring_status"]),
             models.Index(fields=["next_contact_at"]),
+            models.Index(fields=["status_changed_at"]),
         ]
 
     def __str__(self) -> str:

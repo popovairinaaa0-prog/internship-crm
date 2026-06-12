@@ -16,6 +16,7 @@ from notifications.models import Comment
 from placements.models import ACTIVE_STATUSES, Placement, PlacementStatus
 
 from .models import Company, HiringStatus
+from .services import change_company_status
 
 
 _HIRING_PILL_MAP = {
@@ -75,7 +76,22 @@ class CompanyAdmin(VipReadonlyMixin, admin.ModelAdmin):
     search_fields = ("name", "contacts")
     filter_horizontal = ("directions",)
     inlines = [PlacementForCompanyInline, CommentInline]
+    readonly_fields = ("status_changed_at", "created_at", "updated_at")
     save_on_top = True
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            super().save_model(request, obj, form, change)
+            return
+
+        old = Company.objects.get(pk=obj.pk)
+        new_status = form.cleaned_data.get("hiring_status", obj.hiring_status)
+        if old.hiring_status != new_status:
+            obj.hiring_status = old.hiring_status  # вернём, чтобы сервис обновил
+            super().save_model(request, obj, form, change)
+            change_company_status(obj, new_status, user=request.user)
+        else:
+            super().save_model(request, obj, form, change)
 
     class Media:
         css = {"all": ("admin/css/admin_custom.css",)}

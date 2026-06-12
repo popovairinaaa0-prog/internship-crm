@@ -36,11 +36,7 @@ class PushRuleAdmin(VipReadonlyMixin, admin.ModelAdmin):
     list_display = (
         "name",
         "audience_display",
-        "trigger_type",
-        "target_status",
-        "days_threshold",
-        "recurring_every_days",
-        "template",
+        "description_for_admin",
         "is_active",
     )
     list_filter = ("trigger_type", "is_active", "template__audience")
@@ -56,6 +52,21 @@ class PushRuleAdmin(VipReadonlyMixin, admin.ModelAdmin):
     @admin.display(description="Аудитория", ordering="template__audience")
     def audience_display(self, obj: PushRule):
         return obj.template.get_audience_display() if obj.template_id else "—"
+
+    @admin.display(description="Когда срабатывает")
+    def description_for_admin(self, obj: PushRule):
+        trigger_label = obj.get_trigger_type_display()
+        parts = [trigger_label]
+        if obj.target_status:
+            parts.append(f"target: «{obj.target_status}»")
+        parts.append(f"≥ {obj.days_threshold} дн")
+        if obj.recurring_every_days:
+            parts.append(f"повтор каждые {obj.recurring_every_days} дн")
+        else:
+            parts.append("одноразово")
+        shape = " · ".join(parts)
+        tmpl_code = obj.template.code if obj.template_id else "—"
+        return f"{shape} → шаблон «{tmpl_code}»"
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}

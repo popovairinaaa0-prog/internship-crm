@@ -13,6 +13,8 @@ from django.db import transaction
 from django.utils import timezone
 from django_q.tasks import async_task
 
+from companies.models import Company, HiringStatus
+from placements.models import Placement, PlacementStatus
 from students.models import Student
 
 from .models import (
@@ -21,6 +23,10 @@ from .models import (
     BroadcastStatus,
     DeliveryStatus,
     ManualContact,
+    MessageTemplate,
+    PushRule,
+    PushSent,
+    TriggerType,
 )
 
 
@@ -351,6 +357,187 @@ def register_manual_contact(
         student_id, broadcast_job_id, manager.pk,
     )
     return True, contact
+
+
+# --- Автопуши менеджерам --------------------------------------------------
+
+
+def render_template(template: MessageTemplate, context: dict) -> str:
+    """Подставляет ключи в template.text через SafeDict (не падает на лишних)."""
+    return template.text.format_map(SafeDict(context))
+
+
+def _placement_stale_candidates(rule: PushRule):
+    """Placement в target_status дольше days_threshold."""
+    from datetime import timedelta
+
+    cutoff = timezone.now() - timedelta(days=rule.days_threshold)
+    target_status = rule.target_status or PlacementStatus.SENT_TO_COMPANY
+    qs = (
+        Placement.objects.filter(status=target_status, status_changed_at__lte=cutoff)
+        .select_related("student", "company", "direction")
+    )
+    for placement in qs:
+        days = (timezone.now() - placement.status_changed_at).days
+        yield {
+            "placement": placement,
+            "company": placement.company,
+            "student": placement.student,
+            "context": {
+                "student_name": placement.student.full_name,
+                "company_name": placement.company.name,
+                "direction": placement.direction.name,
+                "days": days,
+            },
+        }
+
+
+def _placement_overdue_candidates(rule: PushRule):
+    """IN_PROGRESS, у которых started_at + planned_duration_days < сегодня - threshold."""
+    qs = Placement.objects.filter(
+        status=PlacementStatus.IN_PROGRESS,
+        started_at__isnull=False,
+        planned_duration_days__isnull=False,
+    ).select_related("student", "company")
+    today = timezone.localdate()
+    from datetime import timedelta
+
+    for p in qs:
+        planned_end = p.started_at + timedelta(days=p.planned_duration_days)
+        overrun = (today - planned_end).days
+        if overrun < rule.days_threshold:
+            continue
+        yield {
+            "placement": p,
+            "company": p.company,
+            "student": p.student,
+            "context": {
+                "student_name": p.student.full_name,
+                "company_name": p.company.name,
+                "planned_days": p.planned_duration_days,
+                "days": overrun,
+            },
+        }
+
+
+def _company_paused_candidates(rule: PushRule):
+    """Компании в PAUSED, у которых status_changed_at старше threshold."""
+    from datetime import timedelta
+
+    cutoff = timezone.now() - timedelta(days=rule.days_threshold)
+    qs = Company.objects.filter(
+        hiring_status=HiringStatus.PAUSED,
+        status_changed_at__lte=cutoff,
+    )
+    for company in qs:
+        days = (timezone.now() - company.status_changed_at).days
+        yield {
+            "placement": None,
+            "company": company,
+            "student": None,
+            "context": {
+                "company_name": company.name,
+                "days": days,
+            },
+        }
+
+
+CANDIDATE_FUNCTIONS = {
+    TriggerType.PLACEMENT_STATUS_STALE: _placement_stale_candidates,
+    TriggerType.PLACEMENT_DURATION_EXCEEDED: _placement_overdue_candidates,
+    TriggerType.COMPANY_PAUSED_STALE: _company_paused_candidates,
+}
+
+
+def _already_sent(rule: PushRule, candidate: dict) -> bool:
+    """Проверяет, что для этого правила и объекта уже есть PushSent.
+
+    Для одноразовых (recurring_every_days IS NULL) — любой PushSent блокирует
+    повторную отправку. Для recurring — блокирует, только если последний
+    был не дальше recurring_every_days назад.
+    """
+    qs = PushSent.objects.filter(rule=rule)
+    if candidate["placement"] is not None:
+        qs = qs.filter(placement=candidate["placement"])
+    elif candidate["company"] is not None:
+        qs = qs.filter(company=candidate["company"], placement__isnull=True)
+    elif candidate["student"] is not None:
+        qs = qs.filter(student=candidate["student"])
+
+    if rule.recurring_every_days is None:
+        return qs.exists()
+
+    last = qs.order_by("-sent_at").first()
+    if last is None:
+        return False
+    from datetime import timedelta
+
+    return (timezone.now() - last.sent_at) < timedelta(days=rule.recurring_every_days)
+
+
+def run_push_rules_tick(*, _send=send_telegram_message) -> dict:
+    """Основной воркер автопушей. Запускается qcluster раз в час.
+
+    Возвращает сводку: {"checked": N, "sent": M, "skipped": K, "errors": L}.
+    """
+    chat_id_raw = getattr(settings, "MANAGERS_CHAT_ID", "")
+    bot_token = getattr(settings, "MANAGERS_BOT_TOKEN", "")
+    summary = {"checked": 0, "sent": 0, "skipped": 0, "errors": 0}
+
+    if not chat_id_raw or not bot_token:
+        logger.warning(
+            "run_push_rules_tick: MANAGERS_CHAT_ID или MANAGERS_BOT_TOKEN пуст — "
+            "пуши не отправляются"
+        )
+        return summary
+    try:
+        chat_id = int(chat_id_raw)
+    except (TypeError, ValueError):
+        logger.error("MANAGERS_CHAT_ID не число: %r", chat_id_raw)
+        return summary
+
+    rules = PushRule.objects.filter(is_active=True).select_related("template")
+
+    for rule in rules:
+        candidates_fn = CANDIDATE_FUNCTIONS.get(rule.trigger_type)
+        if candidates_fn is None:
+            # STUDENT_STATUS_PERIODIC — заложено на следующий этап
+            continue
+
+        for cand in candidates_fn(rule):
+            summary["checked"] += 1
+            if _already_sent(rule, cand):
+                summary["skipped"] += 1
+                continue
+
+            text = render_template(rule.template, cand["context"])
+            try:
+                result = _send(chat_id, text, bot_token)
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("send failed for rule %s: %s", rule.pk, exc)
+                summary["errors"] += 1
+                continue
+
+            if result.get("status") != DeliveryStatus.SENT:
+                summary["errors"] += 1
+                logger.warning(
+                    "rule %s: send returned %s (%s)",
+                    rule.pk,
+                    result.get("status"),
+                    result.get("error"),
+                )
+                continue
+
+            PushSent.objects.create(
+                rule=rule,
+                placement=cand["placement"],
+                company=cand["company"],
+                student=cand["student"],
+                recipient_chat_id=chat_id,
+            )
+            summary["sent"] += 1
+
+    return summary
 
 
 def create_broadcast_job(
