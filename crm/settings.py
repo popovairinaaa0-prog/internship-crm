@@ -147,27 +147,69 @@ PUSH_RULES_TICK_INTERVAL_MINUTES = 60
 
 
 # --- Unfold: современная тема для админки -------------------------------
+from django.templatetags.static import static
+
+
+def _static_lazy(path):
+    """Ленивая обёртка для путей в UNFOLD (settings.py читается до setup app'ов)."""
+    return lambda request=None: static(path)
+
+
 UNFOLD = {
-    "SITE_TITLE": "Internship CRM",
-    "SITE_HEADER": "Internship CRM",
+    "SITE_TITLE": "CRM Стажировки",
+    "SITE_HEADER": "CRM Стажировки",
     "SITE_SUBHEADER": "Карьерный центр",
+    "SITE_URL": "",  # нет публичного сайта — убираем «View site» из меню
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": False,
-    "THEME": None,  # позволяем переключать light/dark
+    "THEME": None,  # разрешаем переключение: тёмная — фиолетовая, светлая — зелёная
+    # SITE_ICON (а не SITE_LOGO) даёт связку «иконка + название» в шапке сайдбара
+    "SITE_ICON": _static_lazy("admin/img/zero-head.png"),
+    "SITE_FAVICONS": [
+        {
+            "rel": "icon",
+            "sizes": "256x256",
+            "type": "image/png",
+            "href": _static_lazy("admin/img/zero-head.png"),
+        },
+    ],
+    "STYLES": [
+        _static_lazy("admin/css/admin_custom.css"),
+    ],
+    "SCRIPTS": [
+        _static_lazy("admin/js/admin_custom.js"),
+    ],
+    "LOGIN": {
+        "image": _static_lazy("admin/img/zero-sitting.png"),
+    },
     "COLORS": {
-        # Мягкий фиолетовый (Tailwind violet) — не уставает глаз.
+        # Tailwind-style палитра вокруг бренд-фиолетового #9f7cf4.
         "primary": {
-            "50": "245 243 255",
-            "100": "237 233 254",
-            "200": "221 214 254",
-            "300": "196 181 253",
-            "400": "167 139 250",
-            "500": "139 92 246",
-            "600": "124 58 237",
-            "700": "109 40 217",
-            "800": "91 33 182",
-            "900": "76 29 149",
-            "950": "46 16 101",
+            "50": "245 241 254",
+            "100": "235 227 253",
+            "200": "215 199 251",
+            "300": "194 171 249",
+            "400": "173 143 246",
+            "500": "159 124 244",  # бренд
+            "600": "138 94 232",
+            "700": "117 71 212",
+            "800": "95 55 178",
+            "900": "74 43 140",
+            "950": "45 26 94",
+        },
+        # База — github-стиль: фон #0d1117, карточки #161b22.
+        "base": {
+            "50": "240 243 250",   # светлый текст на тёмном
+            "100": "225 231 243",
+            "200": "195 206 231",
+            "300": "154 169 200",
+            "400": "110 125 156",  # subtle text
+            "500": "74 86 111",    # уделение
+            "600": "48 58 77",     # бордеры
+            "700": "33 41 58",     # hover-фон
+            "800": "22 27 34",     # карточки #161b22
+            "900": "13 17 23",     # фон страницы #0d1117
+            "950": "6 8 12",       # глубокий
         },
     },
     "SIDEBAR": {

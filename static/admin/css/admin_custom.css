@@ -1,34 +1,288 @@
-/* Кастомные стили для Internship CRM Admin. */
+/* Internship CRM — кастомные стили для брендовой тёмной темы.
+   Палитра: фиолетовый #9f7cf4 (primary), зелёный #4def8a (success),
+   фон github-стиля #0d1117 / карточки #161b22. */
 
 :root {
-    --c-red-50: #fef2f2;
-    --c-red-100: #fee2e2;
-    --c-red-200: #fecaca;
-    --c-red-800: #991b1b;
+    /* Брендовые акценты */
+    --brand-purple: #9f7cf4;
+    --brand-purple-soft: rgba(159, 124, 244, 0.18);
+    --brand-purple-glow: rgba(159, 124, 244, 0.45);
 
-    --c-amber-50: #fffbeb;
-    --c-amber-100: #fef3c7;
-    --c-amber-800: #92400e;
+    --brand-green: #4def8a;
+    --brand-green-soft: rgba(77, 239, 138, 0.18);
+    --brand-green-glow: rgba(77, 239, 138, 0.40);
 
-    --c-teal-50: #f0fdfa;
-    --c-teal-800: #115e59;
+    /* Семантика (видна на тёмной базе) */
+    --c-red:   #ef4444;
+    --c-red-soft:   rgba(239, 68, 68, 0.18);
+    --c-red-glow:   rgba(239, 68, 68, 0.45);
+    --c-amber: #f59e0b;
+    --c-amber-soft: rgba(245, 158, 11, 0.18);
+    --c-blue:  #60a5fa;
+    --c-blue-soft:  rgba(96, 165, 250, 0.18);
+    --c-gray:  #94a3b8;
+    --c-gray-soft:  rgba(148, 163, 184, 0.12);
 
-    --c-green-50: #f0fdf4;
-    --c-green-800: #166534;
-
-    --c-blue-50: #eff6ff;
-    --c-blue-800: #1e40af;
-
-    --c-gray-50: #f9fafb;
-    --c-gray-100: #f3f4f6;
-    --c-gray-200: #e5e7eb;
-    --c-gray-800: #1f2937;
-
-    --c-purple-50: #faf5ff;
-    --c-purple-800: #6b21a8;
+    /* Поверхности (используем здесь, чтобы было кому делать glow) */
+    --surface-card: #161b22;
+    --surface-page: #0d1117;
+    --border-soft:  rgba(255, 255, 255, 0.06);
 }
 
-/* --- Круглый аватар с инициалами ------------------------------------- */
+/* --- Котик-водяной знак в правом нижнем углу с лёгкой анимацией ---- */
+@keyframes zero-float {
+    0%   { transform: translateY(0)    rotate(-2deg); }
+    50%  { transform: translateY(-12px) rotate(2deg); }
+    100% { transform: translateY(0)    rotate(-2deg); }
+}
+@keyframes zero-glow {
+    0%, 100% {
+        filter: drop-shadow(0 0 20px rgba(159, 124, 244, 0.30))
+                drop-shadow(0 0 12px rgba(77, 239, 138, 0.20));
+    }
+    50% {
+        filter: drop-shadow(0 0 36px rgba(159, 124, 244, 0.55))
+                drop-shadow(0 0 22px rgba(77, 239, 138, 0.40));
+    }
+}
+body.dashboard::after {
+    content: "";
+    position: fixed;
+    right: 24px;
+    bottom: 16px;
+    width: 280px;
+    height: 280px;
+    background: url("/static/admin/img/zero-sitting.png") no-repeat center/contain;
+    opacity: 0.14;
+    z-index: 0;
+    pointer-events: none;
+    transform-origin: center bottom;
+    animation:
+        zero-float 6s ease-in-out infinite,
+        zero-glow  4s ease-in-out infinite;
+}
+html:not(.dark) body.dashboard::after {
+    opacity: 0.16;
+    animation:
+        zero-float 6s ease-in-out infinite,
+        zero-glow-light 4s ease-in-out infinite;
+}
+@keyframes zero-glow-light {
+    0%, 100% {
+        filter: drop-shadow(0 0 20px rgba(77, 239, 138, 0.35))
+                drop-shadow(0 0 12px rgba(159, 124, 244, 0.18));
+    }
+    50% {
+        filter: drop-shadow(0 0 36px rgba(77, 239, 138, 0.60))
+                drop-shadow(0 0 22px rgba(159, 124, 244, 0.32));
+    }
+}
+/* Уважаем системную настройку «меньше анимации» */
+@media (prefers-reduced-motion: reduce) {
+    body.dashboard::after { animation: none !important; }
+}
+
+/* --- Космический фон: туманности + звёзды (как глаза у Зеро) ---------
+   Звёзды лежат отдельным слоем (html.dark::before) над body bg, чтобы
+   точно перебить любые перекрывающие фоны от Tailwind/Unfold. */
+body {
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
+}
+html.dark body {
+    background-color: #0d1117 !important;
+    background-image:
+        radial-gradient(60% 45% at 12% 12%, rgba(159, 124, 244, 0.22), transparent 70%),
+        radial-gradient(50% 40% at 88% 85%, rgba(77, 239, 138, 0.18), transparent 70%),
+        radial-gradient(40% 32% at 70% 25%, rgba(159, 124, 244, 0.14), transparent 70%),
+        radial-gradient(34% 28% at 25% 78%, rgba(77, 239, 138, 0.12), transparent 70%) !important;
+    background-attachment: fixed !important;
+}
+/* Стартуем со звёзд везде, кроме явно светлой темы */
+/* Каждая «звезда» — белый core + мягкое цветное гало вокруг.
+   Слой полупрозрачный и медленно дрейфует — как звёзды в космосе. */
+#zero-stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9990;
+    background-image:
+        /* Гало — мягкое цветное свечение */
+        radial-gradient(circle at 12% 18%, rgba(77, 239, 138, 0.28) 0%, transparent 7px),
+        radial-gradient(circle at 28% 8%,  rgba(159, 124, 244, 0.28) 0%, transparent 8px),
+        radial-gradient(circle at 45% 32%, rgba(255, 255, 255, 0.20) 0%, transparent 6px),
+        radial-gradient(circle at 64% 22%, rgba(77, 239, 138, 0.28) 0%, transparent 7px),
+        radial-gradient(circle at 82% 12%, rgba(159, 124, 244, 0.28) 0%, transparent 7px),
+        radial-gradient(circle at 14% 48%, rgba(255, 255, 255, 0.18) 0%, transparent 5px),
+        radial-gradient(circle at 38% 58%, rgba(159, 124, 244, 0.28) 0%, transparent 8px),
+        radial-gradient(circle at 56% 68%, rgba(77, 239, 138, 0.28) 0%, transparent 7px),
+        radial-gradient(circle at 78% 52%, rgba(255, 255, 255, 0.18) 0%, transparent 5px),
+        radial-gradient(circle at 92% 68%, rgba(159, 124, 244, 0.28) 0%, transparent 7px),
+        radial-gradient(circle at 22% 88%, rgba(77, 239, 138, 0.28) 0%, transparent 8px),
+        radial-gradient(circle at 48% 82%, rgba(255, 255, 255, 0.18) 0%, transparent 5px),
+        radial-gradient(circle at 70% 92%, rgba(159, 124, 244, 0.28) 0%, transparent 7px),
+        /* Core — деликатная белая точка */
+        radial-gradient(circle at 12% 18%, rgba(255,255,255,0.85) 0 1px, transparent 1.8px),
+        radial-gradient(circle at 28% 8%,  rgba(255,255,255,0.85) 0 1.2px, transparent 2px),
+        radial-gradient(circle at 45% 32%, rgba(255,255,255,0.75) 0 0.8px, transparent 1.6px),
+        radial-gradient(circle at 64% 22%, rgba(255,255,255,0.85) 0 1px, transparent 1.8px),
+        radial-gradient(circle at 82% 12%, rgba(255,255,255,0.85) 0 1px, transparent 1.8px),
+        radial-gradient(circle at 14% 48%, rgba(255,255,255,0.75) 0 0.8px, transparent 1.6px),
+        radial-gradient(circle at 38% 58%, rgba(255,255,255,0.85) 0 1.2px, transparent 2px),
+        radial-gradient(circle at 56% 68%, rgba(255,255,255,0.85) 0 1px, transparent 1.8px),
+        radial-gradient(circle at 78% 52%, rgba(255,255,255,0.75) 0 0.8px, transparent 1.6px),
+        radial-gradient(circle at 92% 68%, rgba(255,255,255,0.85) 0 1px, transparent 1.8px),
+        radial-gradient(circle at 22% 88%, rgba(255,255,255,0.85) 0 1.2px, transparent 2px),
+        radial-gradient(circle at 48% 82%, rgba(255,255,255,0.75) 0 0.8px, transparent 1.6px),
+        radial-gradient(circle at 70% 92%, rgba(255,255,255,0.85) 0 1px, transparent 1.8px);
+    background-size: 360px 360px;
+    background-repeat: repeat;
+    opacity: 0.55;
+    mix-blend-mode: screen;
+    will-change: background-position, opacity;
+}
+/* Медленный дрейф фона + лёгкое мерцание */
+@keyframes stars-drift {
+    from { background-position: 0 0; }
+    to   { background-position: -360px -360px; }
+}
+@keyframes stars-twinkle {
+    0%, 100% { opacity: 0.55; }
+    50%      { opacity: 0.35; }
+}
+#zero-stars {
+    animation:
+        stars-drift   120s linear infinite,
+        stars-twinkle 7s   ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    #zero-stars { animation: none; }
+}
+/* На явно светлой теме звёзды не нужны (теряются на белом) */
+html.light #zero-stars { display: none; }
+/* На login-экране звёзды тоже не нужны — там свой котик и glow */
+body.login #zero-stars { display: none; }
+/* Светлая тема — деликатные блики, без звёзд (на белом не читаются) */
+html:not(.dark) body {
+    background-image:
+        radial-gradient(60% 50% at 12% 10%, rgba(77, 239, 138, 0.10), transparent 70%),
+        radial-gradient(50% 40% at 90% 80%, rgba(77, 239, 138, 0.06), transparent 70%);
+    background-attachment: fixed;
+}
+
+/* --- Светлая тема: переопределяем primary на корпоративный зелёный --- */
+html:not(.dark) {
+    --color-primary-50: 240 254 246;
+    --color-primary-100: 220 252 234;
+    --color-primary-200: 190 248 215;
+    --color-primary-300: 145 244 187;
+    --color-primary-400: 102 240 159;
+    --color-primary-500: 77 239 138;   /* бренд-зелёный #4def8a */
+    --color-primary-600: 38 217 102;
+    --color-primary-700: 28 178 79;
+    --color-primary-800: 22 144 63;
+    --color-primary-900: 16 109 47;
+    --color-primary-950: 8 64 28;
+}
+
+/* В светлой теме плашки статусов берут тёмные оттенки текста для контраста */
+html:not(.dark) .status-pill--purple { color: #5b21b6; border-color: rgba(91, 33, 182, 0.25); }
+html:not(.dark) .status-pill--amber  { color: #92400e; border-color: rgba(146, 64, 14, 0.25); }
+html:not(.dark) .status-pill--teal,
+html:not(.dark) .status-pill--green  { color: #166534; border-color: rgba(22, 101, 52, 0.25); }
+html:not(.dark) .status-pill--blue   { color: #1e40af; border-color: rgba(30, 64, 175, 0.25); }
+html:not(.dark) .status-pill--red    { color: #991b1b; border-color: rgba(153, 27, 27, 0.25); }
+html:not(.dark) .status-pill--gray,
+html:not(.dark) .status-pill--gray-light,
+html:not(.dark) .status-pill--gray-border { color: #1f2937; }
+
+/* Telegram-индикатор и даты — тёмные тона для светлой темы */
+html:not(.dark) .tg-yes { color: #15803d; text-shadow: none; }
+html:not(.dark) .tg-no  { color: #475569; }
+html:not(.dark) .contact-date--overdue { color: #b91c1c; text-shadow: none; }
+html:not(.dark) .contact-date--today   { color: #92400e; text-shadow: none; }
+html:not(.dark) .contact-date--soon    { color: #15803d; }
+html:not(.dark) .contact-date--none    { color: #94a3b8; }
+
+/* Дашборд: карточки белые с лёгкой тенью вместо тёмных */
+html:not(.dark) .dash-card,
+html:not(.dark) .dash-col,
+html:not(.dark) .dash-events,
+html:not(.dark) .dash-zero-alerts {
+    background: #fff;
+    border-color: rgb(var(--color-base-200));
+}
+html:not(.dark) .dash-card .v,
+html:not(.dark) .dash-count-row .v {
+    color: #0f172a;
+}
+html:not(.dark) .dash-card .l { color: rgb(var(--color-base-500)); }
+html:not(.dark) .dash-card .sub { color: rgb(var(--color-base-600)); }
+html:not(.dark) .dash-count-row { color: rgb(var(--color-base-700)); }
+html:not(.dark) .dash-count-row:hover { background: rgba(15, 23, 42, 0.04); }
+html:not(.dark) .dash-event { color: rgb(var(--color-base-700)); border-top-color: rgb(var(--color-base-100)); }
+html:not(.dark) .dash-card:hover {
+    border-color: rgba(77, 239, 138, 0.5);
+    box-shadow: 0 0 0 1px rgba(77, 239, 138, 0.22),
+                0 8px 28px rgba(77, 239, 138, 0.18);
+}
+html:not(.dark) .dash-card:hover .v {
+    text-shadow: 0 0 10px rgba(77, 239, 138, 0.35);
+}
+html:not(.dark) .dash-alerts {
+    background: #fff7f6;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+html:not(.dark) .dash-alerts h3 { color: #b91c1c; }
+html:not(.dark) .dash-alert--critical .t { color: #b91c1c; }
+html:not(.dark) .dash-alert--warning  .t { color: #b45309; }
+html:not(.dark) .dash-zero-alerts {
+    border-color: rgba(77, 239, 138, 0.35);
+}
+html:not(.dark) .dash-zero-alerts .t { color: #15803d; text-shadow: none; }
+
+/* Логин в светлой теме — белый фон, мягкая тень зелёным */
+html:not(.dark) body.login,
+html:not(.dark) body.login #page { background: #fafbff !important; }
+html:not(.dark) body.login::before {
+    background:
+        radial-gradient(800px 480px at 50% 52%, rgba(77, 239, 138, 0.30), transparent 70%),
+        radial-gradient(600px 360px at 56% 64%, rgba(159, 124, 244, 0.16), transparent 70%);
+}
+html:not(.dark) body.login form#login-form {
+    background: #fff;
+    border-color: rgba(77, 239, 138, 0.35);
+    box-shadow:
+        0 0 0 1px rgba(77, 239, 138, 0.25),
+        0 0 56px rgba(77, 239, 138, 0.30),
+        0 12px 40px rgba(15, 23, 42, 0.10);
+}
+
+/* --- Зелёный glow-курсор: маленький и деликатный -------------------- */
+.cursor-glow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 110px;
+    height: 110px;
+    pointer-events: none;
+    z-index: 9999;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle,
+            rgba(77, 239, 138, 0.22) 0%,
+            rgba(77, 239, 138, 0.10) 35%,
+            transparent 70%);
+    opacity: 0;
+    transition: opacity .25s ease;
+    will-change: transform;
+}
+.cursor-glow.is-visible {
+    opacity: 1;
+}
+
+/* --- Аватар с инициалами (круг) -------------------------------------- */
 .avatar {
     display: inline-flex;
     align-items: center;
@@ -41,86 +295,94 @@
     font-size: 12px;
     letter-spacing: 0.3px;
     flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.04);
 }
 
 /* --- Подсветка строк по сроку контакта ------------------------------- */
-.row-overdue { box-shadow: inset 4px 0 0 #ef4444; }
-.row-overdue td { background: rgba(239, 68, 68, 0.06) !important; }
+.row-overdue { box-shadow: inset 3px 0 0 var(--c-red), inset -1px 0 24px var(--c-red-soft); }
+.row-overdue td { background: rgba(239, 68, 68, 0.05) !important; }
 
-.row-today { box-shadow: inset 4px 0 0 #f59e0b; }
-.row-today td { background: rgba(245, 158, 11, 0.06) !important; }
+.row-today { box-shadow: inset 3px 0 0 var(--c-amber), inset -1px 0 24px var(--c-amber-soft); }
+.row-today td { background: rgba(245, 158, 11, 0.05) !important; }
 
-.row-soon { box-shadow: inset 4px 0 0 rgba(167, 139, 250, 0.4); }
+.row-soon { box-shadow: inset 3px 0 0 var(--brand-purple-soft); }
 
-/* --- Универсальная плашка статуса ------------------------------------ */
+/* --- Универсальная плашка статуса (на тёмной базе) ------------------- */
 .status-pill {
     display: inline-block;
-    padding: 2px 10px;
+    padding: 3px 10px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
     line-height: 18px;
     white-space: nowrap;
+    border: 1px solid transparent;
 }
 
-.status-pill--purple { background: var(--c-purple-50); color: var(--c-purple-800); }
-.status-pill--amber  { background: var(--c-amber-50);  color: var(--c-amber-800); }
-.status-pill--teal   { background: var(--c-teal-50);   color: var(--c-teal-800); }
-.status-pill--green  { background: var(--c-green-50);  color: var(--c-green-800); }
-.status-pill--blue   { background: var(--c-blue-50);   color: var(--c-blue-800); }
-.status-pill--red    { background: var(--c-red-50);    color: var(--c-red-800); }
-.status-pill--gray   { background: var(--c-gray-100);  color: var(--c-gray-800); }
-.status-pill--gray-light { background: var(--c-gray-50); color: var(--c-gray-800); opacity: 0.75; }
+.status-pill--purple { background: var(--brand-purple-soft); color: var(--brand-purple); border-color: rgba(159, 124, 244, 0.32); }
+.status-pill--amber  { background: var(--c-amber-soft);     color: var(--c-amber);     border-color: rgba(245, 158, 11, 0.32); }
+.status-pill--teal   { background: var(--brand-green-soft); color: var(--brand-green); border-color: rgba(77, 239, 138, 0.32); }
+.status-pill--green  { background: var(--brand-green-soft); color: var(--brand-green); border-color: rgba(77, 239, 138, 0.32); }
+.status-pill--blue   { background: var(--c-blue-soft);      color: var(--c-blue);      border-color: rgba(96, 165, 250, 0.32); }
+.status-pill--red    { background: var(--c-red-soft);       color: var(--c-red);       border-color: rgba(239, 68, 68, 0.32); }
+.status-pill--gray   { background: var(--c-gray-soft);      color: var(--c-gray); }
+.status-pill--gray-light { background: var(--c-gray-soft);  color: var(--c-gray); opacity: 0.7; }
 .status-pill--gray-border {
-    border: 1px solid var(--c-gray-200);
-    color: var(--c-gray-800);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--c-gray);
     background: transparent;
 }
 
-/* --- Telegram-индикатор (видим и в светлой, и в тёмной теме) --------- */
+/* «Стажируется» подсветим зелёным glow — это центральный позитивный сигнал */
+.status-pill--teal { box-shadow: 0 0 0 1px rgba(77, 239, 138, 0.12), 0 0 12px rgba(77, 239, 138, 0.18); }
+
+/* --- Telegram-индикатор ---------------------------------------------- */
 .tg-yes {
-    color: #10b981;            /* emerald-500 — яркий зелёный на обеих темах */
+    color: var(--brand-green);
     font-weight: 700;
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    text-shadow: 0 0 8px rgba(77, 239, 138, 0.35);
 }
 .tg-yes::before {
     content: "✈";
     font-size: 13px;
 }
 .tg-no {
-    color: #94a3b8;            /* slate-400 — заметный gray на обеих темах */
+    color: var(--c-gray);
     font-weight: 600;
     display: inline-flex;
     align-items: center;
     gap: 5px;
 }
 .tg-no.tg-empty {
-    color: #94a3b8;
+    color: var(--c-gray);
     font-style: italic;
 }
 
-/* --- Дата контакта в списке студентов (видна в обеих темах) ---------- */
+/* --- Дата контакта в списке студентов -------------------------------- */
 .contact-date--overdue {
-    color: #ef4444;            /* red-500 — яркая на тёмной и насыщенная на светлой */
+    color: var(--c-red);
     font-weight: 800;
+    text-shadow: 0 0 6px rgba(239, 68, 68, 0.35);
 }
 .contact-date--today {
-    color: #f59e0b;            /* amber-500 */
+    color: var(--c-amber);
     font-weight: 800;
+    text-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
 }
 .contact-date--soon {
-    color: #a78bfa;            /* violet-400 — родная палитра, не сливается с фоном */
+    color: var(--brand-purple);
     font-weight: 600;
 }
 .contact-date--none {
-    color: #94a3b8;            /* slate-400 */
+    color: var(--c-gray);
     font-style: italic;
     font-weight: 600;
 }
 
-/* --- Заголовок секции внутри списка студентов ------------------------ */
+/* --- Заголовок секции внутри списков --------------------------------- */
 .section-header {
     padding: 8px 12px;
     margin: 12px 0 4px 0;
@@ -131,15 +393,15 @@
     align-items: center;
     gap: 8px;
 }
-.section-header--overdue { background: var(--c-red-50);   color: var(--c-red-800); }
-.section-header--today   { background: var(--c-amber-50); color: var(--c-amber-800); }
-.section-header--soon    { background: var(--c-gray-50);  color: var(--c-gray-800); }
-.section-header--none    { background: var(--c-gray-50);  color: var(--c-gray-800); opacity: 0.7; }
+.section-header--overdue { background: var(--c-red-soft);   color: var(--c-red); }
+.section-header--today   { background: var(--c-amber-soft); color: var(--c-amber); }
+.section-header--soon    { background: rgba(255,255,255,0.04); color: var(--c-gray); }
+.section-header--none    { background: rgba(255,255,255,0.03); color: var(--c-gray); opacity: 0.7; }
 
 /* --- Подсветка зависших Placement в карточке компании --------------- */
 .placement-row--stale {
-    background: var(--c-red-50);
-    border-left: 3px solid var(--c-red-200);
+    background: var(--c-red-soft);
+    border-left: 3px solid var(--c-red);
     padding-left: 6px;
 }
 
@@ -147,7 +409,125 @@
 .pushrule-audience-header {
     margin: 16px 0 6px 0;
     padding: 6px 10px;
-    background: var(--c-gray-100);
+    background: rgba(255, 255, 255, 0.04);
     border-radius: 4px;
     font-weight: 600;
+    color: var(--c-gray);
+}
+
+/* --- Лого котика в сайдбаре ------------------------------------------ */
+/* Unfold даёт SITE_ICON в шапке сайдбара; добавим лёгкий glow вокруг. */
+header img[alt*="Internship"], header img[alt*="CRM"],
+aside img[alt*="Internship"], aside img[alt*="CRM"] {
+    filter: drop-shadow(0 0 8px rgba(159, 124, 244, 0.45))
+            drop-shadow(0 0 14px rgba(77, 239, 138, 0.18));
+}
+
+/* --- Логин-экран: большой котик + общее свечение под формой и котиком */
+body.login,
+body.login #page {
+    background: var(--surface-page) !important;
+    position: relative;
+}
+/* Убираем «Return to site» — он налезает на форму при узком контейнере */
+body.login #page > div:first-child > div.absolute {
+    display: none !important;
+}
+/* Общее фиолетово-зелёное сияние под формой + котиком */
+body.login::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+        radial-gradient(800px 480px at 50% 52%, rgba(159, 124, 244, 0.45), transparent 70%),
+        radial-gradient(600px 360px at 56% 64%, rgba(77, 239, 138, 0.28), transparent 70%);
+    z-index: 0;
+    pointer-events: none;
+}
+body.login #page,
+body.login form#login-form,
+body.login .bg-cover {
+    position: relative;
+    z-index: 1;
+}
+/* Вся пара (форма + котик) центрируется по экрану вплотную друг к другу */
+body.login #page {
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 0 !important;
+}
+body.login #page > div:first-child {
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    max-width: 420px !important;
+}
+body.login .bg-cover {
+    background-color: transparent !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: left center !important;
+    position: relative;
+    flex: 0 0 680px !important;
+    height: 680px !important;
+    max-width: 680px !important;
+    margin: 0 !important;
+}
+body.login .bg-cover.hidden {
+    display: block !important;
+}
+body.login .bg-cover {
+    z-index: 1;
+}
+/* Форма логина — заметный фиолетовый glow вокруг карточки */
+body.login form#login-form {
+    padding: 24px;
+    background: var(--surface-card);
+    border: 1px solid rgba(159, 124, 244, 0.25);
+    border-radius: 16px;
+    box-shadow:
+        0 0 0 1px rgba(159, 124, 244, 0.25),
+        0 0 56px rgba(159, 124, 244, 0.40),
+        0 0 24px rgba(77, 239, 138, 0.18),
+        0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* --- Primary-кнопки: мягкий glow ------------------------------------- */
+.button, button[type="submit"], a.button,
+.submit-row input[type="submit"],
+.bg-primary-600, .bg-primary-500 {
+    transition: box-shadow .2s, transform .15s;
+}
+.submit-row input[type="submit"]:hover,
+button[type="submit"]:hover,
+a.button.button--primary:hover,
+.bg-primary-600:hover {
+    box-shadow: 0 0 0 1px rgba(159, 124, 244, 0.4),
+                0 0 18px rgba(159, 124, 244, 0.35);
+}
+
+/* --- Пустое состояние с котиком --------------------------------------
+   Применяется к .changelist-results, когда результатов нет.
+   Шаблон вставляет .empty-state-cat вокруг блока. */
+.empty-state-cat {
+    text-align: center;
+    padding: 48px 24px 56px;
+}
+.empty-state-cat img {
+    max-width: 220px;
+    width: 60%;
+    height: auto;
+    margin: 0 auto 16px;
+    filter: drop-shadow(0 0 30px rgba(159, 124, 244, 0.35))
+            drop-shadow(0 0 18px rgba(77, 239, 138, 0.2));
+}
+.empty-state-cat .title {
+    color: rgb(var(--color-base-200));
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+.empty-state-cat .sub {
+    color: rgb(var(--color-base-400));
+    font-size: 13px;
 }

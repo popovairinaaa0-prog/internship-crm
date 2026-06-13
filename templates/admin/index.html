@@ -1,9 +1,11 @@
 {% extends "admin/index.html" %}
 {% load i18n %}
 
+{% load static %}
 {% block content %}
 {% if dashboard %}
 <style>
+    /* Карточки метрик */
     .dash-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -12,97 +14,104 @@
     }
     .dash-card {
         display: block;
-        background: rgb(var(--color-base-50));
-        border: 1px solid rgb(var(--color-base-200));
-        border-radius: 12px;
-        padding: 18px 20px;
+        background: rgb(var(--color-base-800));
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        padding: 20px 22px;
         text-decoration: none;
         color: inherit;
-        transition: border-color .15s, transform .15s, box-shadow .15s;
+        transition: border-color .2s, transform .15s, box-shadow .2s;
+        position: relative;
+        overflow: hidden;
+    }
+    .dash-card::before {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        background: linear-gradient(135deg, rgba(159,124,244,0.06), transparent 60%);
+        pointer-events: none;
     }
     .dash-card:hover {
-        border-color: rgb(var(--color-primary-500));
-        transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.12);
+        border-color: rgba(159, 124, 244, 0.45);
+        transform: translateY(-2px);
+        box-shadow: 0 0 0 1px rgba(159, 124, 244, 0.2),
+                    0 8px 28px rgba(159, 124, 244, 0.18);
     }
     .dash-card .v {
-        font-size: 30px;
+        font-size: 32px;
         font-weight: 800;
-        color: rgb(var(--color-font-default-color));
+        color: #fff;
         line-height: 1;
+        letter-spacing: -0.5px;
+    }
+    .dash-card:hover .v {
+        text-shadow: 0 0 14px rgba(159, 124, 244, 0.45);
     }
     .dash-card .l {
         font-size: 11px;
-        color: rgb(var(--color-base-500));
+        color: rgb(var(--color-base-400));
         text-transform: uppercase;
-        margin-top: 8px;
-        letter-spacing: 0.5px;
+        margin-top: 10px;
+        letter-spacing: 0.6px;
         font-weight: 600;
     }
     .dash-card .sub {
         font-size: 13px;
-        color: rgb(var(--color-base-600));
+        color: rgb(var(--color-base-300));
         margin-top: 6px;
     }
-    .dash-card .sub a {
-        color: rgb(var(--color-primary-500));
-        text-decoration: none;
-        font-weight: 600;
-    }
-    .dash-card .sub a:hover { text-decoration: underline; }
 
+    /* Алерты «требует внимания» */
     .dash-alerts {
-        background: rgb(254 242 242 / 0.5);
-        border: 1px solid rgb(254 202 202);
-        border-radius: 12px;
-        padding: 14px 18px;
+        background:
+            linear-gradient(180deg, rgba(239, 68, 68, 0.08), transparent 80%),
+            rgb(var(--color-base-800));
+        border: 1px solid rgba(239, 68, 68, 0.28);
+        border-radius: 14px;
+        padding: 16px 20px;
         margin-bottom: 22px;
-    }
-    .dark .dash-alerts {
-        background: rgb(127 29 29 / 0.15);
-        border-color: rgb(153 27 27);
+        box-shadow: 0 0 24px rgba(239, 68, 68, 0.10);
     }
     .dash-alerts h3 {
         margin: 0 0 10px 0;
         font-size: 12px;
-        color: #b91c1c;
+        color: #fca5a5;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: 700;
     }
-    .dark .dash-alerts h3 { color: #fca5a5; }
     .dash-alert {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px 0;
-        border-top: 1px solid rgb(254 226 226);
+        padding: 10px 4px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
         text-decoration: none;
         color: inherit;
     }
-    .dark .dash-alert { border-top-color: rgb(127 29 29 / 0.3); }
     .dash-alert:first-of-type { border-top: 0; }
-    .dash-alert--critical .t { color: #b91c1c; font-weight: 700; }
-    .dash-alert--warning .t { color: #b45309; font-weight: 700; }
-    .dark .dash-alert--critical .t { color: #fca5a5; }
-    .dark .dash-alert--warning  .t { color: #fcd34d; }
+    .dash-alert--critical .t { color: #fca5a5; font-weight: 700; }
+    .dash-alert--warning  .t { color: #fcd34d; font-weight: 700; }
     .dash-alert .s {
         font-size: 12px;
-        color: rgb(var(--color-base-500));
+        color: rgb(var(--color-base-400));
         margin-top: 2px;
     }
     .dash-alert .arrow {
         font-size: 22px;
         color: rgb(var(--color-base-400));
+        transition: color .15s, transform .15s;
     }
     .dash-alert:hover {
-        background: rgba(239, 68, 68, 0.04);
+        background: rgba(239, 68, 68, 0.06);
         border-radius: 8px;
     }
     .dash-alert:hover .arrow {
-        color: rgb(var(--color-primary-500));
+        color: #9f7cf4;
+        transform: translateX(2px);
     }
 
+    /* Сводки по статусам */
     .dash-cols {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -110,15 +119,15 @@
         margin-bottom: 22px;
     }
     .dash-col {
-        background: rgb(var(--color-base-50));
-        border: 1px solid rgb(var(--color-base-200));
-        border-radius: 12px;
-        padding: 16px 18px;
+        background: rgb(var(--color-base-800));
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        padding: 18px 20px;
     }
     .dash-col h3 {
         margin: 0 0 12px 0;
         font-size: 12px;
-        color: rgb(var(--color-base-500));
+        color: rgb(var(--color-base-400));
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: 700;
@@ -127,47 +136,49 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 10px;
-        border-radius: 6px;
+        padding: 9px 10px;
+        border-radius: 8px;
         text-decoration: none;
-        color: inherit;
+        color: rgb(var(--color-base-200));
         font-size: 14px;
         transition: background .12s;
     }
     .dash-count-row:hover {
-        background: rgb(var(--color-base-100));
+        background: rgba(255, 255, 255, 0.04);
     }
     .dash-count-row .v {
         font-weight: 700;
-        color: rgb(var(--color-font-default-color));
+        color: #fff;
     }
     .dash-dot {
         display: inline-block;
-        width: 10px;
-        height: 10px;
+        width: 9px;
+        height: 9px;
         border-radius: 50%;
         margin-right: 10px;
         vertical-align: middle;
+        box-shadow: 0 0 8px currentColor;
     }
-    .dot-purple    { background: #c084fc; }
-    .dot-amber     { background: #fbbf24; }
-    .dot-teal      { background: #2dd4bf; }
-    .dot-green     { background: #4ade80; }
-    .dot-gray      { background: #9ca3af; }
-    .dot-gray-light{ background: #d1d5db; }
-    .dot-red       { background: #f87171; }
+    .dot-purple    { background: #9f7cf4; color: #9f7cf4; }
+    .dot-amber     { background: #f59e0b; color: #f59e0b; }
+    .dot-teal      { background: #4def8a; color: #4def8a; }
+    .dot-green     { background: #4def8a; color: #4def8a; }
+    .dot-gray      { background: #94a3b8; color: transparent; }
+    .dot-gray-light{ background: #475569; color: transparent; }
+    .dot-red       { background: #ef4444; color: #ef4444; }
 
+    /* Последние события */
     .dash-events {
-        background: rgb(var(--color-base-50));
-        border: 1px solid rgb(var(--color-base-200));
-        border-radius: 12px;
-        padding: 16px 18px;
+        background: rgb(var(--color-base-800));
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        padding: 18px 20px;
         margin-bottom: 22px;
     }
     .dash-events h3 {
         margin: 0 0 12px 0;
         font-size: 12px;
-        color: rgb(var(--color-base-500));
+        color: rgb(var(--color-base-400));
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: 700;
@@ -175,17 +186,48 @@
     .dash-event {
         display: flex;
         justify-content: space-between;
-        padding: 8px 0;
+        padding: 9px 0;
         font-size: 13px;
-        border-top: 1px solid rgb(var(--color-base-100));
-        color: rgb(var(--color-base-700));
+        border-top: 1px solid rgba(255, 255, 255, 0.04);
+        color: rgb(var(--color-base-300));
     }
     .dash-event:first-of-type { border-top: 0; }
     .dash-event .when {
-        color: rgb(var(--color-base-400));
+        color: rgb(var(--color-base-500));
         font-size: 12px;
         min-width: 110px;
         text-align: right;
+    }
+
+    /* Пустое состояние «алертов нет» с котиком */
+    .dash-zero-alerts {
+        background: rgb(var(--color-base-800));
+        border: 1px solid rgba(77, 239, 138, 0.18);
+        border-radius: 14px;
+        padding: 24px 20px 20px;
+        margin-bottom: 22px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        box-shadow: 0 0 28px rgba(77, 239, 138, 0.08);
+    }
+    .dash-zero-alerts img {
+        width: 96px;
+        height: auto;
+        flex-shrink: 0;
+        filter: drop-shadow(0 0 18px rgba(77, 239, 138, 0.4))
+                drop-shadow(0 0 12px rgba(159, 124, 244, 0.25));
+    }
+    .dash-zero-alerts .t {
+        color: #4def8a;
+        font-weight: 700;
+        font-size: 15px;
+        text-shadow: 0 0 10px rgba(77, 239, 138, 0.4);
+    }
+    .dash-zero-alerts .s {
+        color: rgb(var(--color-base-400));
+        font-size: 13px;
+        margin-top: 4px;
     }
 </style>
 
@@ -226,6 +268,14 @@
         <span class="arrow">→</span>
     </a>
     {% endfor %}
+</div>
+{% else %}
+<div class="dash-zero-alerts">
+    <img src="{% static 'admin/img/zero-waving.png' %}" alt="Zero">
+    <div>
+        <div class="t">Всё спокойно — алертов нет</div>
+        <div class="s">Никаких просрочек, зависших стажировок и пауз дольше нормы. Можно заняться плановым.</div>
+    </div>
 </div>
 {% endif %}
 
